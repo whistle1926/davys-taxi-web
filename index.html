@@ -591,7 +591,11 @@ var STEP_FLOW = ['accepted', 'arriving', 'arrived', 'in_progress', 'completed'];
 var STEP_LABEL = { accepted: 'Job accepted', arriving: 'Heading to pickup', arrived: 'Arrived at pickup', in_progress: 'Trip in progress', completed: 'Trip complete' };
 var ACTION_LABEL = { accepted: 'Start heading to pickup', arriving: 'I’ve arrived', arrived: 'Start trip', in_progress: 'Complete trip' };
 
-function reloadTrips(){ try { trips = JSON.parse(localStorage.getItem('davys.trips') || '[]'); } catch(e){ trips = []; } }
+// `trips` (module-level) is the source of truth for the session; storage is a
+// best-effort mirror so it survives a page reload where available. We never
+// overwrite the live array from storage mid-session — that would wipe state
+// anywhere localStorage is blocked (private mode, sandboxed previews).
+function reloadTrips(){ /* intentionally a no-op — see note above */ }
 function saveTrips(){ try { localStorage.setItem('davys.trips', JSON.stringify(trips)); } catch(e){} }
 
 function driverLogin(){
