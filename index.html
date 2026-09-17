@@ -480,9 +480,10 @@ function markerIcon(color){
 function ensureMap(){
   if (map || typeof L === 'undefined') return;
   map = L.map('leaflet', { zoomControl: false, attributionControl: true }).setView(CARNDONAGH, 10);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd', maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  // Esri dark-grey canvas — keyless, matches the dark UI.
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 16,
+    attribution: 'Tiles &copy; Esri &mdash; &copy; OpenStreetMap contributors',
   }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 }
