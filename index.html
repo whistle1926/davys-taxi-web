@@ -84,7 +84,7 @@
   .step .sc { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
   .step.done .sc { background: var(--success); border-color: var(--success); color: #04120B; font-weight: 800; }
   #dmap-wrap { position: relative; height: 220px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
-  #dmap { position: absolute; inset: 0; background: #0a1a2b; }
+  #dmap { position: absolute; inset: 0; background: #e3e8ec; }
 
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
   .screen.active { display: flex; }
@@ -123,11 +123,11 @@
   .tagline { color: var(--muted); font-size: 16px; margin-top: 8px; }
 
   /* Map */
-  .map { position: relative; flex: 1; background: #0a1a2b; overflow: hidden; }
-  #leaflet { position: absolute; inset: 0; z-index: 0; background: #0a1a2b; }
-  .leaflet-container { background: #0a1a2b; font-family: var(--font); }
-  .leaflet-control-attribution { background: rgba(11,18,32,.7) !important; color: #7f8da8; }
-  .leaflet-control-attribution a { color: #9AA5B8 !important; }
+  .map { position: relative; flex: 1; background: #e3e8ec; overflow: hidden; }
+  #leaflet { position: absolute; inset: 0; z-index: 0; background: #e3e8ec; }
+  .leaflet-container { background: #e3e8ec; font-family: var(--font); }
+  .leaflet-control-attribution { background: rgba(255,255,255,.8) !important; color: #555; }
+  .leaflet-control-attribution a { color: #2b6cb0 !important; }
 
   .topbar { position: relative; z-index: 10; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 14px; pointer-events: none; }
   .topbar .pill { pointer-events: auto; }
@@ -722,10 +722,10 @@ function markerIcon(color){
 function ensureMap(){
   if (map || typeof L === 'undefined') return;
   map = L.map('leaflet', { zoomControl: false, attributionControl: true }).setView(CARNDONAGH, 12);
-  // Esri dark-grey canvas — keyless, matches the dark UI.
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 16,
-    attribution: 'Tiles &copy; Esri &mdash; &copy; OpenStreetMap contributors',
+  // Bright, detailed OpenStreetMap street map — keyless.
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    subdomains: 'abc', maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 }
@@ -894,7 +894,7 @@ var dmap = null, dpick = null, ddrop = null, dline = null;
 function ensureDMap(){
   if (dmap || typeof L === 'undefined') return;
   dmap = L.map('dmap', { zoomControl: false, attributionControl: false }).setView(CARNDONAGH, 10);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(dmap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 }).addTo(dmap);
 }
 function drawDriverMap(t){
   ensureDMap(); if (!dmap) return;
