@@ -285,7 +285,7 @@
       <div class="back" onclick="go('home')">‹</div>
       <h2 id="picker-title">Choose pickup</h2>
     </div>
-    <div class="pad"><input id="picker-search" class="input" placeholder="Search town or landmark" autocomplete="off" oninput="renderPlaces()" /></div>
+    <div class="pad"><input id="picker-search" class="input" placeholder="Town, business, street or Eircode" autocomplete="off" oninput="renderPlaces()" /></div>
     <div class="scroll pad" id="place-list" style="margin-top:12px;"></div>
   </section>
 
@@ -747,22 +747,71 @@ function openPicker(field){
   renderPlaces();
   go('picker');
 }
-function renderPlaces(){
-  var q = document.getElementById('picker-search').value.trim().toLowerCase();
-  var list = PLACES.filter(function(p){ return !q || p.label.toLowerCase().indexOf(q) >= 0; });
-  var html = list.map(function(p){
+var geoTimer = null, geoSeq = 0, geoResults = [];
+
+function localRows(q){
+  return PLACES.filter(function(p){ return !q || p.label.toLowerCase().indexOf(q) >= 0; }).map(function(p){
     return '<div class="row" style="border-bottom:1px solid var(--border)" onclick="choosePlace(' + PLACES.indexOf(p) + ')">' +
       '<span style="font-size:16px">📌</span><div class="rv">' + p.label + '</div></div>';
   }).join('');
-  document.getElementById('place-list').innerHTML = html || '<p class="empty">No match — full address search arrives with Google Places in a later phase.</p>';
 }
-function choosePlace(idx){
-  var p = PLACES[idx];
-  if (state.field === 'dropoff') { state.dropoff = p; document.getElementById('dropoff-label').textContent = p.label; }
+function renderPlaces(){
+  var raw = document.getElementById('picker-search').value.trim();
+  var q = raw.toLowerCase();
+  var localHtml = localRows(q);
+  var listEl = document.getElementById('place-list');
+
+  if (!raw){ geoResults = []; listEl.innerHTML = localHtml; return; }
+
+  clearTimeout(geoTimer);
+  if (raw.length >= 3){
+    // Instant local matches, then a live address/business search.
+    listEl.innerHTML = localHtml + '<div class="muted small" style="padding:14px 4px">Searching addresses &amp; places…</div>';
+    var mySeq = ++geoSeq;
+    geoTimer = setTimeout(function(){ geocode(raw, mySeq, localHtml); }, 450);
+  } else {
+    listEl.innerHTML = localHtml || '<p class="empty">Keep typing to search…</p>';
+  }
+}
+function geocode(query, seq, localHtml){
+  // Free OpenStreetMap geocoding — biased to Inishowen/Donegal, then IE + UK.
+  var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8' +
+    '&countrycodes=ie,gb&viewbox=-7.95,55.5,-6.85,54.85&bounded=0&q=' + encodeURIComponent(query);
+  fetch(url, { headers: { 'Accept': 'application/json' } })
+    .then(function(r){ return r.json(); })
+    .then(function(rows){
+      if (seq !== geoSeq) return; // a newer keystroke superseded this
+      geoResults = (rows || []).map(function(r){ return { label: shortenLabel(r), lat: parseFloat(r.lat), lng: parseFloat(r.lon) }; });
+      var online = geoResults.map(function(g, i){
+        return '<div class="row" style="border-bottom:1px solid var(--border)" onclick="chooseOnline(' + i + ')">' +
+          '<span style="font-size:16px">📍</span><div class="rv">' + esc(g.label) + '</div></div>';
+      }).join('');
+      var listEl = document.getElementById('place-list');
+      if (online){
+        listEl.innerHTML = localHtml + '<div class="muted small" style="padding:14px 4px 6px;font-weight:700;letter-spacing:.3px">SEARCH RESULTS</div>' + online;
+      } else {
+        listEl.innerHTML = localHtml + '<p class="empty">No match for “' + esc(query) + '”. Try a business name, street, town or Eircode.</p>';
+      }
+    })
+    .catch(function(){
+      if (seq !== geoSeq) return;
+      document.getElementById('place-list').innerHTML = localHtml + '<p class="empty">Couldn’t search just now — check your connection and try again.</p>';
+    });
+}
+function shortenLabel(r){
+  var parts = (r.display_name || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  var name = (r.name && r.name.trim().length) ? r.name.trim() : (parts[0] || 'Location');
+  var rest = parts.filter(function(p){ return p !== name; }).slice(0, 2).join(', ');
+  return rest ? name + ', ' + rest : name;
+}
+function setPlace(p){
+  if (state.field === 'dropoff'){ state.dropoff = p; document.getElementById('dropoff-label').textContent = p.label; }
   else { state.pickup = p; document.getElementById('pickup-label').textContent = p.label; }
   document.getElementById('btn-prices').disabled = !(state.pickup && state.dropoff);
   go('home');
 }
+function choosePlace(idx){ setPlace(PLACES[idx]); }
+function chooseOnline(i){ var g = geoResults[i]; if (g) setPlace({ label: g.label, lat: g.lat, lng: g.lng }); }
 
 // ---------- Review ----------
 function renderReview(){
