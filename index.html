@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Davy's Taxi</title>
+<meta name="theme-color" content="#0B1220" />
+<meta name="description" content="Book a taxi across Inishowen & Donegal — Davy's Taxi." />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0B1220;
+    --surface: #111827;
+    --surface-alt: #1B2436;
+    --border: #243044;
+    --text: #F3F4F6;
+    --muted: #9AA5B8;
+    --primary: #FFC531;
+    --primary-text: #1A1200;
+    --success: #34D399;
+    --danger: #F87171;
+    --font: 'Manrope', system-ui, -apple-system, sans-serif;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #05080f;
+    font-family: var(--font);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  #app {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    height: 100%;
+    max-height: 932px;
+    background: var(--bg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  @media (min-width: 460px) {
+    body { padding: 24px; }
+    #app { border-radius: 40px; box-shadow: 0 30px 80px rgba(0,0,0,.6); border: 1px solid #1c2635; height: 900px; }
+  }
+
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  .pad { padding: 0 20px; }
+  .grow { flex: 1; }
+  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  h1,h2,h3 { margin: 0; text-wrap: balance; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+
+  .btn {
+    height: 54px; border: none; border-radius: 14px; width: 100%;
+    font-family: var(--font); font-weight: 700; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform .06s ease, opacity .15s ease;
+  }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--primary); color: var(--primary-text); }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  .input {
+    width: 100%; height: 54px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; color: var(--text); font-family: var(--font); font-size: 16px;
+    padding: 0 16px; outline: none;
+  }
+  .input:focus { border-color: var(--primary); }
+  .label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; }
+
+  #welcome { align-items: center; justify-content: center; text-align: center; padding: 0 24px; }
+  .badge { width: 88px; height: 88px; border-radius: 26px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 46px; }
+  .brand { font-size: 34px; font-weight: 800; letter-spacing: -.5px; margin-top: 18px; }
+  .tagline { color: var(--muted); font-size: 16px; margin-top: 8px; }
+
+  /* Map */
+  .map { position: relative; flex: 1; background: #0a1a2b; overflow: hidden; }
+  #leaflet { position: absolute; inset: 0; z-index: 0; background: #0a1a2b; }
+  .leaflet-container { background: #0a1a2b; font-family: var(--font); }
+  .leaflet-control-attribution { background: rgba(11,18,32,.7) !important; color: #7f8da8; }
+  .leaflet-control-attribution a { color: #9AA5B8 !important; }
+
+  .topbar { position: relative; z-index: 10; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 14px; pointer-events: none; }
+  .topbar .pill { pointer-events: auto; }
+  .pill { background: var(--surface); border: 1px solid var(--border); padding: 9px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; color: var(--text); cursor: pointer; }
+
+  .sheet { position: relative; z-index: 10; background: var(--surface); border-top: 1px solid var(--border); border-radius: 26px 26px 0 0; padding: 14px 20px 24px; }
+  .grabber { width: 44px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto 14px; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 10px 0; cursor: pointer; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .row .rl { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .row .rv { font-size: 16px; margin-top: 1px; }
+  .divider { height: 1px; background: var(--border); margin-left: 26px; }
+
+  .head { display: flex; align-items: center; gap: 14px; padding: 18px 20px 8px; }
+  .back { width: 40px; height: 40px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; color: var(--text); }
+  .head h2 { font-size: 20px; }
+
+  .opt { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; cursor: pointer; }
+  .opt.active { border-color: var(--primary); background: var(--surface-alt); }
+  .opt .emoji { font-size: 24px; }
+  .opt .oname { font-weight: 700; }
+  .opt .osub { color: var(--muted); font-size: 13px; }
+  .opt .price { font-weight: 800; color: var(--muted); }
+  .opt.active .price { color: var(--primary); }
+  .radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; }
+  .opt.active .radio { border-color: var(--primary); }
+  .radio i { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); display: none; }
+  .opt.active .radio i { display: block; }
+
+  .section { font-size: 18px; font-weight: 700; margin: 22px 0 12px; }
+  .line { display: flex; justify-content: space-between; padding: 4px 0; }
+  .line .ll { color: var(--muted); }
+  .total { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .total .tl { font-size: 18px; font-weight: 700; }
+  .total .tv { font-size: 20px; font-weight: 800; color: var(--primary); }
+
+  .footer { padding: 14px 20px 24px; background: var(--surface); border-top: 1px solid var(--border); }
+
+  #confirm { align-items: center; text-align: center; }
+  .spinner { width: 56px; height: 56px; border-radius: 50%; border: 4px solid var(--border); border-top-color: var(--primary); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tick { width: 76px; height: 76px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; font-size: 40px; color: #04120B; font-weight: 900; }
+  .driver { display: flex; align-items: center; gap: 14px; width: 100%; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: var(--primary-text); display: flex; align-items: center; justify-content: center; font-weight: 800; }
+
+  .trip { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .trip .th { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .empty { text-align: center; color: var(--muted); margin-top: 60px; }
+
+  .demo-tag { position: absolute; top: 0; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: .5px; padding: 4px; background: rgba(255,197,49,.12); color: var(--primary); font-weight: 700; z-index: 500; pointer-events: none; }
+
+  .toast { position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); background: var(--surface-alt); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .2s; z-index: 600; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="demo-tag">DEMO — Davy's Taxi preview</div>
+
+  <!-- WELCOME -->
+  <section id="welcome" class="screen active">
+    <div class="badge">🚕</div>
+    <div class="brand">Davy's Taxi</div>
+    <div class="tagline">Book a taxi across Inishowen &amp; Donegal in seconds.</div>
+    <div style="width:100%; margin-top:40px; text-align:left;">
+      <label class="label">Your name</label>
+      <input id="in-name" class="input" placeholder="e.g. Aoife Doherty" autocomplete="off" />
+      <label class="label" style="margin-top:16px;">Mobile number</label>
+      <input id="in-phone" class="input" inputmode="tel" placeholder="e.g. 087 123 4567" autocomplete="off" />
+      <button id="btn-continue" class="btn btn-primary" style="margin-top:24px;" disabled>Continue</button>
+      <p class="muted small" style="text-align:center;">Demo sign-in — no real account is created.</p>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section id="home" class="screen">
+    <div class="map">
+      <div id="leaflet"></div>
+      <div class="topbar">
+        <div>
+          <div id="hello" style="font-size:20px;font-weight:800;text-shadow:0 1px 6px rgba(0,0,0,.7)">Hi 👋</div>
+          <div class="small" style="text-shadow:0 1px 6px rgba(0,0,0,.7)">Where are you headed?</div>
+        </div>
+        <div class="pill" onclick="go('trips')">Trips</div>
+      </div>
+    </div>
+    <div class="sheet">
+      <div class="grabber"></div>
+      <div class="row" onclick="openPicker('pickup')">
+        <span class="dot" style="background:var(--success)"></span>
+        <div class="grow"><div class="rl">Pickup</div><div class="rv" id="pickup-label">Set pickup point</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="row" onclick="openPicker('dropoff')">
+        <span class="dot" style="background:var(--primary)"></span>
+        <div class="grow"><div class="rl">Destination</div><div class="rv" id="dropoff-label">Where to?</div></div>
+      </div>
+      <button id="btn-prices" class="btn btn-primary" style="margin-top:16px;" disabled onclick="go('review')">See prices</button>
+    </div>
+  </section>
+
+  <!-- PICKER -->
+  <section id="picker" class="screen">
+    <div class="head">
+      <div class="back" onclick="go('home')">‹</div>
+      <h2 id="picker-title">Choose pickup</h2>
+    </div>
+    <div class="pad"><input id="picker-search" class="input" placeholder="Search town or landmark" autocomplete="off" oninput="renderPlaces()" /></div>
+    <div class="scroll pad" id="place-list" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- REVIEW -->
+  <section id="review" class="screen">
+    <div class="head">
+      <div class="back" onclick="go('home')">‹</div>
+      <h2>Confirm your trip</h2>
+    </div>
+    <div class="scroll pad">
+      <div class="card">
+        <div class="row" style="padding:4px 0;cursor:default"><span class="dot" style="background:var(--success)"></span><div class="rv" id="rev-pickup"></div></div>
+        <div style="width:1px;height:14px;background:var(--border);margin-left:5px"></div>
+        <div class="row" style="padding:4px 0;cursor:default"><span class="dot" style="background:var(--primary)"></span><div class="rv" id="rev-dropoff"></div></div>
+        <div class="muted small" id="rev-meta" style="margin-top:8px"></div>
+      </div>
+
+      <div class="section">Choose your ride</div>
+      <div id="vehicle-list"></div>
+
+      <div class="section">Payment</div>
+      <div id="payment-list"></div>
+
+      <div class="section">Fare estimate</div>
+      <div class="card">
+        <div class="line"><span class="ll">Base fare</span><span id="f-base"></span></div>
+        <div class="line"><span class="ll" id="f-dist-label">Distance</span><span id="f-dist"></span></div>
+        <div class="line"><span class="ll" id="f-time-label">Time</span><span id="f-time"></span></div>
+        <div class="total"><span class="tl">Estimated total</span><span class="tv" id="f-total"></span></div>
+        <p class="muted small" style="margin-bottom:0">Estimate only. Final fare depends on the actual route and traffic.</p>
+      </div>
+      <div style="height:8px"></div>
+    </div>
+    <div class="footer"><button class="btn btn-primary" id="btn-book" onclick="book()">Book now</button></div>
+  </section>
+
+  <!-- CONFIRMATION -->
+  <section id="confirm" class="screen">
+    <div class="scroll pad" style="padding-top:40px;display:flex;flex-direction:column;align-items:center">
+      <div id="conf-searching" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+        <div class="spinner"></div>
+        <h2 style="font-size:22px">Finding your driver…</h2>
+        <div class="muted">Contacting nearby Davy's Taxi drivers</div>
+      </div>
+      <div id="conf-found" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%">
+        <div class="tick">✓</div>
+        <h2 style="font-size:22px;margin-top:6px">Driver on the way</h2>
+        <div class="muted" id="conf-eta">Arriving in about 4 min</div>
+        <div class="card driver" style="margin-top:14px">
+          <div class="avatar">MK</div>
+          <div class="grow"><div style="font-weight:700">Martin K. · ⭐ 4.9</div><div class="muted small">Toyota Prius · 181-D-4472</div></div>
+        </div>
+      </div>
+      <div class="card" id="conf-details" style="width:100%;margin-top:20px"></div>
+    </div>
+    <div class="footer"><button class="btn btn-primary" onclick="finishTrip()">Done</button></div>
+  </section>
+
+  <!-- TRIPS -->
+  <section id="trips" class="screen">
+    <div class="head"><div class="back" onclick="go('home')">‹</div><h2>Your trips</h2></div>
+    <div class="scroll pad" id="trips-list" style="margin-top:8px"></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ---------- Data ----------
+var PLACES = [
+  { label: 'Carndonagh Town (The Diamond)', lat: 55.2494, lng: -7.2653 },
+  { label: 'Carndonagh Community Hospital', lat: 55.2531, lng: -7.2711 },
+  { label: 'Malin Town', lat: 55.2939, lng: -7.2636 },
+  { label: 'Malin Head', lat: 55.3817, lng: -7.3736 },
+  { label: 'Ballyliffin', lat: 55.2897, lng: -7.3892 },
+  { label: 'Clonmany', lat: 55.2647, lng: -7.4128 },
+  { label: 'Culdaff', lat: 55.2872, lng: -7.1636 },
+  { label: 'Gleneely', lat: 55.2778, lng: -7.1183 },
+  { label: 'Moville', lat: 55.1897, lng: -7.0386 },
+  { label: 'Greencastle', lat: 55.2028, lng: -6.9903 },
+  { label: "Quigley's Point", lat: 55.1233, lng: -7.2233 },
+  { label: 'Buncrana', lat: 55.1367, lng: -7.4556 },
+  { label: 'Muff', lat: 55.0644, lng: -7.2686 },
+  { label: 'Bridgend', lat: 55.0472, lng: -7.4222 },
+  { label: 'City of Derry Airport (Eglinton)', lat: 55.0428, lng: -7.1611 },
+  { label: 'Derry / Londonderry City', lat: 54.9966, lng: -7.3086 },
+  { label: 'Letterkenny', lat: 54.9503, lng: -7.7344 },
+];
+
+var RATES = {
+  standard:   { name: 'Standard',   sub: 'Everyday saloon, up to 4', emoji: '🚕', base: 4.20, perKm: 1.30, perMin: 0.50, min: 6.50 },
+  estate:     { name: 'Estate',     sub: 'Extra luggage room',        emoji: '🚙', base: 5.00, perKm: 1.55, perMin: 0.55, min: 8.00 },
+  exec:       { name: 'Executive',  sub: 'Premium car',               emoji: '🚘', base: 8.00, perKm: 2.20, perMin: 0.70, min: 15.00 },
+  wheelchair: { name: 'Accessible', sub: 'Wheelchair accessible',     emoji: '♿', base: 4.20, perKm: 1.30, perMin: 0.50, min: 6.50 },
+};
+var VEHICLE_ORDER = ['standard','estate','exec','wheelchair'];
+var PAYMENTS = [
+  { key: 'card',      name: 'Card',        sub: 'Visa, Mastercard, Apple/Google Pay', emoji: '💳' },
+  { key: 'paybybank', name: 'Pay by bank', sub: 'Lowest fees — straight from your bank', emoji: '🏦' },
+  { key: 'cash',      name: 'Cash',        sub: 'Pay the driver directly', emoji: '💶' },
+];
+var PAY_LABEL = { card: 'Card', paybybank: 'Pay by bank', cash: 'Cash to driver' };
+
+var ROAD_FACTOR = 1.35, AVG_SPEED = 42;
+
+// ---------- State ----------
+var state = { name: '', pickup: null, dropoff: null, vehicle: 'standard', payment: 'card', field: 'pickup' };
+var trips = [];
+try { trips = JSON.parse(localStorage.getItem('davys.trips') || '[]'); } catch (e) {}
+
+// ---------- Fare maths ----------
+function haversine(a, b) {
+  var R = 6371, dLat = rad(b.lat-a.lat), dLng = rad(b.lng-a.lng), la1 = rad(a.lat), la2 = rad(b.lat);
+  var h = Math.sin(dLat/2)**2 + Math.sin(dLng/2)**2 * Math.cos(la1)*Math.cos(la2);
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function rad(d){ return d*Math.PI/180; }
+function euro(n){ return '€' + n.toFixed(2); }
+
+function estimate(pickup, dropoff, vkey) {
+  var t = RATES[vkey];
+  var km = Math.round(haversine(pickup, dropoff) * ROAD_FACTOR * 10) / 10;
+  var min = Math.max(1, Math.round(km / AVG_SPEED * 60));
+  var distCharge = km * t.perKm, timeCharge = min * t.perMin;
+  var total = Math.max(t.base + distCharge + timeCharge, t.min);
+  return { km: km, min: min, base: t.base, dist: r2(distCharge), time: r2(timeCharge), total: r2(total) };
+}
+function r2(n){ return Math.round(n*100)/100; }
+
+// ---------- Navigation ----------
+function go(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  if (id === 'review') renderReview();
+  if (id === 'trips') renderTrips();
+  if (id === 'home') updateMap();
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('show'); }, 1600);
+}
+
+// ---------- Welcome ----------
+var nameEl = document.getElementById('in-name'), phoneEl = document.getElementById('in-phone'), contBtn = document.getElementById('btn-continue');
+function checkWelcome(){ contBtn.disabled = !(nameEl.value.trim().length > 1 && phoneEl.value.trim().length >= 7); }
+nameEl.addEventListener('input', checkWelcome);
+phoneEl.addEventListener('input', checkWelcome);
+contBtn.addEventListener('click', function(){
+  state.name = nameEl.value.trim();
+  document.getElementById('hello').textContent = 'Hi, ' + state.name.split(' ')[0] + ' 👋';
+  go('home');
+});
+
+// ---------- Picker ----------
+function openPicker(field){
+  state.field = field;
+  document.getElementById('picker-title').textContent = field === 'pickup' ? 'Choose pickup' : 'Choose destination';
+  document.getElementById('picker-search').value = '';
+  renderPlaces();
+  go('picker');
+}
+function renderPlaces(){
+  var q = document.getElementById('picker-search').value.trim().toLowerCase();
+  var list = PLACES.filter(function(p){ return !q || p.label.toLowerCase().indexOf(q) >= 0; });
+  var html = list.map(function(p){
+    return '<div class="row" style="border-bottom:1px solid var(--border)" onclick="choosePlace(' + PLACES.indexOf(p) + ')">' +
+      '<span style="font-size:16px">📌</span><div class="rv">' + p.label + '</div></div>';
+  }).join('');
+  document.getElementById('place-list').innerHTML = html || '<p class="empty">No match — full address search arrives with Google Places in a later phase.</p>';
+}
+function choosePlace(idx){
+  var p = PLACES[idx];
+  if (state.field === 'dropoff') { state.dropoff = p; document.getElementById('dropoff-label').textContent = p.label; }
+  else { state.pickup = p; document.getElementById('pickup-label').textContent = p.label; }
+  document.getElementById('btn-prices').disabled = !(state.pickup && state.dropoff);
+  go('home');
+}
+
+// ---------- Review ----------
+function renderReview(){
+  document.getElementById('rev-pickup').textContent = state.pickup.label;
+  document.getElementById('rev-dropoff').textContent = state.dropoff.label;
+  var base = estimate(state.pickup, state.dropoff, state.vehicle);
+  document.getElementById('rev-meta').textContent = '~' + base.km + ' km · ~' + base.min + ' min';
+
+  document.getElementById('vehicle-list').innerHTML = VEHICLE_ORDER.map(function(k){
+    var v = RATES[k], f = estimate(state.pickup, state.dropoff, k), on = state.vehicle === k;
+    return '<div class="opt' + (on?' active':'') + '" onclick="pickVehicle(\'' + k + '\')">' +
+      '<span class="emoji">' + v.emoji + '</span>' +
+      '<div class="grow"><div class="oname">' + v.name + '</div><div class="osub">' + v.sub + '</div></div>' +
+      '<span class="price">' + euro(f.total) + '</span></div>';
+  }).join('');
+
+  document.getElementById('payment-list').innerHTML = PAYMENTS.map(function(p){
+    var on = state.payment === p.key;
+    return '<div class="opt' + (on?' active':'') + '" onclick="pickPayment(\'' + p.key + '\')">' +
+      '<span class="emoji">' + p.emoji + '</span>' +
+      '<div class="grow"><div class="oname">' + p.name + '</div><div class="osub">' + p.sub + '</div></div>' +
+      '<span class="radio"><i></i></span></div>';
+  }).join('');
+
+  var f = estimate(state.pickup, state.dropoff, state.vehicle);
+  document.getElementById('f-base').textContent = euro(f.base);
+  document.getElementById('f-dist-label').textContent = 'Distance (' + f.km + ' km)';
+  document.getElementById('f-dist').textContent = euro(f.dist);
+  document.getElementById('f-time-label').textContent = 'Time (' + f.min + ' min)';
+  document.getElementById('f-time').textContent = euro(f.time);
+  document.getElementById('f-total').textContent = euro(f.total);
+  document.getElementById('btn-book').textContent = 'Book for ' + euro(f.total);
+}
+function pickVehicle(k){ state.vehicle = k; renderReview(); }
+function pickPayment(k){ state.payment = k; renderReview(); }
+
+// ---------- Booking ----------
+function book(){
+  var f = estimate(state.pickup, state.dropoff, state.vehicle);
+  var trip = {
+    id: 'T' + Date.now().toString(36).toUpperCase(),
+    at: Date.now(), pickup: state.pickup.label, dropoff: state.dropoff.label,
+    km: f.km, min: f.min, vehicle: state.vehicle, payment: state.payment, fare: f.total,
+  };
+  trips.unshift(trip);
+  try { localStorage.setItem('davys.trips', JSON.stringify(trips)); } catch(e) {}
+
+  document.getElementById('conf-searching').style.display = 'flex';
+  document.getElementById('conf-found').style.display = 'none';
+  document.getElementById('conf-details').innerHTML =
+    detailRow('Booking', trip.id) + detailRow('Ride', RATES[trip.vehicle].name) +
+    detailRow('Distance', '~' + trip.km + ' km · ~' + trip.min + ' min') +
+    detailRow('Payment', PAY_LABEL[trip.payment]) +
+    '<div class="total"><span class="tl">Fare</span><span class="tv">' + euro(trip.fare) + '</span></div>';
+  go('confirm');
+  setTimeout(function(){
+    document.getElementById('conf-searching').style.display = 'none';
+    document.getElementById('conf-found').style.display = 'flex';
+  }, 2400);
+}
+function detailRow(l, v){ return '<div class="line"><span class="ll">' + l + '</span><span style="font-weight:600">' + v + '</span></div>'; }
+
+function finishTrip(){
+  state.pickup = null; state.dropoff = null; state.vehicle = 'standard'; state.payment = 'card';
+  document.getElementById('pickup-label').textContent = 'Set pickup point';
+  document.getElementById('dropoff-label').textContent = 'Where to?';
+  document.getElementById('btn-prices').disabled = true;
+  go('home');
+  toast('Trip booked — thanks!');
+}
+
+// ---------- Trips ----------
+function renderTrips(){
+  if (!trips.length) { document.getElementById('trips-list').innerHTML = '<div class="empty"><div style="font-size:44px">🚕</div><div style="font-weight:700;margin-top:8px">No trips yet</div><div class="small">Your booked rides will appear here.</div></div>'; return; }
+  document.getElementById('trips-list').innerHTML = trips.map(function(t){
+    var v = RATES[t.vehicle];
+    var d = new Date(t.at).toLocaleDateString('en-IE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    return '<div class="trip"><div class="th"><span class="muted small">' + d + '</span><span style="color:var(--primary);font-weight:800">' + euro(t.fare) + '</span></div>' +
+      '<div style="font-weight:600">' + t.pickup + '  →  ' + t.dropoff + '</div>' +
+      '<div class="muted small" style="margin-top:2px">' + v.emoji + ' ' + v.name + ' · ~' + t.km + ' km</div></div>';
+  }).join('');
+}
+
+// ---------- Real map (Leaflet + OpenStreetMap) ----------
+var CARNDONAGH = [55.2494, -7.2653];
+var map = null, pickMarker = null, dropMarker = null, routeLine = null;
+
+function markerIcon(color){
+  return L.divIcon({
+    className: 'dv-pin',
+    html: '<div style="width:18px;height:18px;border-radius:50%;background:'+color+';border:3px solid #0a1a2b;box-shadow:0 0 0 3px '+color+'44"></div>',
+    iconSize: [18,18], iconAnchor: [9,9],
+  });
+}
+function ensureMap(){
+  if (map || typeof L === 'undefined') return;
+  map = L.map('leaflet', { zoomControl: false, attributionControl: true }).setView(CARNDONAGH, 10);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+}
+function updateMap(){
+  ensureMap();
+  if (!map) return;
+  setTimeout(function(){ map.invalidateSize(); redrawRoute(); }, 60);
+}
+function redrawRoute(){
+  if (pickMarker){ map.removeLayer(pickMarker); pickMarker = null; }
+  if (dropMarker){ map.removeLayer(dropMarker); dropMarker = null; }
+  if (routeLine){ map.removeLayer(routeLine); routeLine = null; }
+
+  if (state.pickup){ pickMarker = L.marker([state.pickup.lat, state.pickup.lng], { icon: markerIcon('#34D399') }).addTo(map); }
+  if (state.dropoff){ dropMarker = L.marker([state.dropoff.lat, state.dropoff.lng], { icon: markerIcon('#FFC531') }).addTo(map); }
+
+  if (state.pickup && state.dropoff){
+    routeLine = L.polyline([[state.pickup.lat, state.pickup.lng], [state.dropoff.lat, state.dropoff.lng]],
+      { color: '#FFC531', weight: 4, opacity: .9, dashArray: '2 10' }).addTo(map);
+    map.fitBounds(routeLine.getBounds(), { paddingTopLeft: [50, 90], paddingBottomRight: [50, 40] });
+  } else if (state.pickup){
+    map.setView([state.pickup.lat, state.pickup.lng], 12);
+  } else {
+    map.setView(CARNDONAGH, 10);
+  }
+}
+</script>
+</body>
+</html>
