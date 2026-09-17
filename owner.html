@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Davy's Taxi — Owner</title>
+<meta name="theme-color" content="#0B1220" />
+<meta name="robots" content="noindex" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+  :root{
+    --bg:#0B1220; --surface:#111827; --surface-alt:#1B2436; --border:#243044;
+    --text:#F3F4F6; --muted:#9AA5B8; --primary:#FFC531; --primary-text:#1A1200;
+    --success:#34D399; --danger:#F87171; --blue:#60A5FA;
+    --font:'Manrope',system-ui,-apple-system,sans-serif; color-scheme:dark;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px}
+  h1,h2,h3{margin:0}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  input,select,button{font-family:var(--font)}
+  .btn{border:none;border-radius:12px;height:44px;padding:0 18px;font-weight:700;font-size:15px;cursor:pointer;background:var(--primary);color:var(--primary-text)}
+  .btn.sec{background:var(--surface-alt);color:var(--text);border:1px solid var(--border)}
+  .btn.sm{height:36px;padding:0 12px;font-size:13px;border-radius:10px}
+  .btn:disabled{opacity:.5;cursor:default}
+  .input{height:44px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;padding:0 12px;outline:none;width:100%}
+  .input:focus{border-color:var(--primary)}
+
+  /* Gate */
+  #gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .gatecard{width:100%;max-width:360px;text-align:center}
+  .badge{width:76px;height:76px;border-radius:22px;background:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:40px}
+  .brand{font-size:26px;font-weight:800;margin-top:14px}
+
+  /* Layout */
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+  header .logo{display:flex;align-items:center;gap:10px;font-weight:800}
+  header .logo .mk{width:34px;height:34px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:18px}
+  nav{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:63px;z-index:19}
+  nav button{white-space:nowrap;background:transparent;border:1px solid transparent;color:var(--muted);font-weight:700;font-size:14px;height:38px;padding:0 14px;border-radius:999px;cursor:pointer}
+  nav button.active{background:var(--primary);color:var(--primary-text)}
+  main{max-width:1100px;margin:0 auto;padding:22px 16px 60px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+  .grid{display:grid;gap:14px}
+  .stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .stat .k{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .stat .v{font-size:28px;font-weight:800;margin-top:4px}
+  .sectitle{font-size:18px;font-weight:800;margin:6px 0 14px}
+  .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill.live{background:rgba(96,165,250,.15);color:var(--blue)}
+  .pill.done{background:rgba(52,211,153,.15);color:var(--success)}
+  .pill.new{background:rgba(255,197,49,.15);color:var(--primary)}
+  .pill.off{background:rgba(248,113,113,.15);color:var(--danger)}
+  .fare{color:var(--primary);font-weight:800}
+
+  .veh{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;padding:14px 0;border-bottom:1px solid var(--border)}
+  .veh:last-child{border-bottom:none}
+  .veh .emoji{font-size:26px}
+  .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+  .fld label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:5px}
+  .switch{position:relative;width:46px;height:26px;flex:none}
+  .switch input{display:none}
+  .switch span{position:absolute;inset:0;background:var(--surface-alt);border:1px solid var(--border);border-radius:999px;transition:.15s}
+  .switch span:before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#8aa0c0;top:3px;left:3px;transition:.15s}
+  .switch input:checked+span{background:var(--primary);border-color:var(--primary)}
+  .switch input:checked+span:before{background:#1A1200;transform:translateX(20px)}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--surface-alt);border:1px solid var(--border);padding:12px 18px;border-radius:999px;font-weight:700;opacity:0;transition:.2s;z-index:50;pointer-events:none}
+  .toast.show{opacity:1}
+  .filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .filters button{background:var(--surface-alt);border:1px solid var(--border);color:var(--muted);height:34px;padding:0 14px;border-radius:999px;font-weight:700;font-size:13px;cursor:pointer}
+  .filters button.on{background:var(--primary);color:var(--primary-text)}
+  .empty{color:var(--muted);text-align:center;padding:40px 0}
+  .scroll-x{overflow-x:auto}
+</style>
+</head>
+<body>
+
+<!-- PASSCODE GATE -->
+<div id="gate">
+  <div class="gatecard">
+    <div class="badge">🔑</div>
+    <div class="brand">Owner Dashboard</div>
+    <div class="muted" style="margin-top:6px">Davy's Taxi — private access</div>
+    <input id="pass" class="input" type="password" placeholder="Owner passcode" style="margin-top:22px;text-align:center;letter-spacing:2px" />
+    <button class="btn" style="width:100%;margin-top:12px" onclick="tryUnlock()">Enter</button>
+    <div id="gate-err" class="small" style="color:var(--danger);min-height:18px;margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" hidden>
+  <header>
+    <div class="logo"><div class="mk">🚕</div> Davy's Taxi <span class="muted small" style="font-weight:600">· Owner</span></div>
+    <button class="btn sec sm" onclick="lock()">Sign out</button>
+  </header>
+  <nav id="tabs"></nav>
+  <main id="content"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Config =====
+var SUPABASE_URL = 'https://imudxshsltehbtkxszwm.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_mA56dCV3CGzYBbo_YImXag__4DjQavo';
+var OWNER_PASSCODE = 'davy2468'; // change this to your own private code
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===== State =====
+var trips = [], drivers = [], customers = [], cfg = { vehicles: [] };
+var tripFilter = 'all';
+var TABS = [
+  { key:'overview', label:'📊 Overview' },
+  { key:'bookings', label:'📋 Bookings' },
+  { key:'pricing',  label:'💶 Pricing' },
+  { key:'cars',     label:'🚗 Cars' },
+  { key:'drivers',  label:'🧑‍✈️ Drivers' },
+  { key:'customers',label:'👤 Customers' },
+];
+var tab = 'overview';
+
+function euro(n){ return '€' + (Number(n)||0).toFixed(2); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},1800); }
+var LIVE = ['requested','accepted','arriving','arrived','in_progress'];
+
+// ===== Gate =====
+document.getElementById('pass').addEventListener('keydown', function(e){ if(e.key==='Enter') tryUnlock(); });
+function tryUnlock(){
+  var v = document.getElementById('pass').value;
+  if (v === OWNER_PASSCODE){
+    try{ sessionStorage.setItem('davys.owner','1'); }catch(e){}
+    openDash();
+  } else {
+    document.getElementById('gate-err').textContent = 'Wrong passcode — try again.';
+  }
+}
+function lock(){ try{ sessionStorage.removeItem('davys.owner'); }catch(e){} location.reload(); }
+try{ if(sessionStorage.getItem('davys.owner')==='1') { /* auto-open after load */ window._auto=true; } }catch(e){}
+
+async function openDash(){
+  document.getElementById('gate').hidden = true;
+  document.getElementById('dash').hidden = false;
+  renderTabs();
+  await reloadAll();
+  setupRealtime();
+  render();
+}
+
+// ===== Data =====
+async function reloadAll(){ await Promise.all([loadTrips(), loadDrivers(), loadCustomers(), loadConfig()]); }
+async function loadTrips(){ try{ var r=await sb.from('demo_trips').select('*').order('created_at',{ascending:false}); trips=r.data||[]; }catch(e){ trips=[]; } }
+async function loadDrivers(){ try{ var r=await sb.from('drivers').select('*').order('created_at',{ascending:true}); drivers=r.data||[]; }catch(e){ drivers=[]; } }
+async function loadCustomers(){ try{ var r=await sb.from('customers').select('*').order('created_at',{ascending:false}); customers=r.data||[]; }catch(e){ customers=[]; } }
+async function loadConfig(){ try{ var r=await sb.from('app_settings').select('config').eq('id',1).single(); cfg=(r.data&&r.data.config)||{vehicles:[]}; }catch(e){ cfg={vehicles:[]}; } }
+
+var realtimeSet=false;
+function setupRealtime(){
+  if(realtimeSet) return; realtimeSet=true;
+  try{
+    sb.channel('owner_ch')
+      .on('postgres_changes',{event:'*',schema:'public',table:'demo_trips'}, async function(){ await loadTrips(); if(tab==='overview'||tab==='bookings') render(); })
+      .on('postgres_changes',{event:'*',schema:'public',table:'drivers'}, async function(){ await loadDrivers(); if(tab==='overview'||tab==='drivers') render(); })
+      .subscribe();
+  }catch(e){}
+}
+
+// ===== Tabs =====
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = TABS.map(function(t){
+    return '<button class="'+(t.key===tab?'active':'')+'" onclick="go(\''+t.key+'\')">'+t.label+'</button>';
+  }).join('');
+}
+function go(t){ tab=t; renderTabs(); render(); }
+
+function render(){
+  var c = document.getElementById('content');
+  if(tab==='overview') c.innerHTML = viewOverview();
+  else if(tab==='bookings') c.innerHTML = viewBookings();
+  else if(tab==='pricing') c.innerHTML = viewPricing();
+  else if(tab==='cars') c.innerHTML = viewCars();
+  else if(tab==='drivers') c.innerHTML = viewDrivers();
+  else if(tab==='customers') c.innerHTML = viewCustomers();
+}
+
+// ===== Overview =====
+function isToday(iso){ var d=new Date(iso); var n=new Date(); return d.toDateString()===n.toDateString(); }
+function viewOverview(){
+  var today = trips.filter(function(t){ return isToday(t.created_at); });
+  var takings = today.reduce(function(s,t){ return s+(Number(t.fare)||0); },0);
+  var activeDrv = drivers.filter(function(d){ return d.active; }).length;
+  var recent = trips.slice(0,6);
+  return '<div class="grid stats">'
+    + statTile("Today's trips", today.length)
+    + statTile("Today's takings", euro(takings))
+    + statTile("Active drivers", activeDrv)
+    + statTile("Customers", customers.length)
+    + '</div>'
+    + '<div class="sectitle" style="margin-top:22px">Recent bookings</div>'
+    + '<div class="card scroll-x">' + tripsTable(recent) + '</div>';
+}
+function statTile(k,v){ return '<div class="card stat"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+
+// ===== Bookings =====
+function viewBookings(){
+  var list = trips;
+  if(tripFilter==='live') list = trips.filter(function(t){ return LIVE.indexOf(t.status)>=0; });
+  else if(tripFilter==='completed') list = trips.filter(function(t){ return t.status==='completed'; });
+  var f = function(k,l){ return '<button class="'+(tripFilter===k?'on':'')+'" onclick="setFilter(\''+k+'\')">'+l+'</button>'; };
+  return '<div class="row-between"><div class="sectitle">All bookings</div><button class="btn sec sm" onclick="refresh()">↻ Refresh</button></div>'
+    + '<div class="filters">'+f('all','All ('+trips.length+')')+f('live','Live')+f('completed','Completed')+'</div>'
+    + '<div class="card scroll-x">' + tripsTable(list) + '</div>';
+}
+function setFilter(k){ tripFilter=k; render(); }
+function statusPill(s){
+  var cls = s==='completed'?'done':(LIVE.indexOf(s)>=0?(s==='requested'?'new':'live'):'off');
+  return '<span class="pill '+cls+'">'+esc(s||'—')+'</span>';
+}
+function vName(key){ var v=(cfg.vehicles||[]).filter(function(x){return x.key===key;})[0]; return v?(v.emoji+' '+v.name):esc(key); }
+function tripsTable(list){
+  if(!list.length) return '<div class="empty">No bookings yet.</div>';
+  return '<table><thead><tr><th>Time</th><th>Route</th><th>Car</th><th>Fare</th><th>Pay</th><th>Status</th><th>Driver</th><th>PIN</th></tr></thead><tbody>'
+    + list.map(function(t){
+      var when=new Date(t.created_at).toLocaleString('en-IE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      var sched = t.scheduled_at ? ' <span class="pill new">⏰ '+new Date(t.scheduled_at).toLocaleString('en-IE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</span>' : '';
+      return '<tr><td class="muted">'+when+'</td>'
+        + '<td>'+esc(t.pickup_label)+' <span class="muted">→</span> '+esc(t.dropoff_label)+sched+'</td>'
+        + '<td>'+vName(t.vehicle_class||t.vehicle)+'</td>'
+        + '<td class="fare">'+euro(t.fare)+'</td>'
+        + '<td class="muted">'+esc(t.payment||t.payment_method)+'</td>'
+        + '<td>'+statusPill(t.status)+'</td>'
+        + '<td>'+esc(t.driver_name||'—')+'</td>'
+        + '<td class="muted">'+esc(t.pin||'—')+'</td></tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+// ===== Pricing =====
+function viewPricing(){
+  var rows = (cfg.vehicles||[]).map(function(v,i){
+    return '<div class="veh"><div class="emoji">'+esc(v.emoji)+'</div><div>'
+      + '<div style="font-weight:800;margin-bottom:8px">'+esc(v.name)+'</div>'
+      + '<div class="fields">'
+      +   fld('Base fare €','pr_base_'+i, v.base)
+      +   fld('Per km €','pr_km_'+i, v.perKm)
+      +   fld('Per min €','pr_min_'+i, v.perMin)
+      +   fld('Minimum €','pr_flr_'+i, v.min)
+      + '</div></div></div>';
+  }).join('');
+  return '<div class="row-between"><div class="sectitle">Fare pricing</div><button class="btn" onclick="savePricing()">Save pricing</button></div>'
+    + '<p class="muted small" style="margin:-6px 0 14px">Changes apply to the customer app the next time a fare is calculated.</p>'
+    + '<div class="card">'+rows+'</div>';
+}
+function fld(label,id,val){ return '<div class="fld"><label>'+label+'</label><input class="input" id="'+id+'" type="number" step="0.01" min="0" value="'+esc(val)+'"></div>'; }
+async function savePricing(){
+  (cfg.vehicles||[]).forEach(function(v,i){
+    v.base=numv('pr_base_'+i); v.perKm=numv('pr_km_'+i); v.perMin=numv('pr_min_'+i); v.min=numv('pr_flr_'+i);
+  });
+  await saveConfig('Pricing saved');
+}
+function numv(id){ var el=document.getElementById(id); return el?Math.max(0,parseFloat(el.value)||0):0; }
+
+// ===== Cars =====
+function viewCars(){
+  var rows = (cfg.vehicles||[]).map(function(v,i){
+    return '<div class="veh"><div class="emoji">'+esc(v.emoji)+'</div><div>'
+      + '<div class="fields" style="grid-template-columns:1fr 1.4fr auto;align-items:end">'
+      +   fldText('Name','car_name_'+i, v.name)
+      +   fldText('Description','car_blurb_'+i, v.blurb)
+      +   '<div class="fld"><label>Shown</label><label class="switch"><input type="checkbox" id="car_on_'+i+'" '+(v.enabled?'checked':'')+'><span></span></label></div>'
+      + '</div></div></div>';
+  }).join('');
+  return '<div class="row-between"><div class="sectitle">Cars customers can pick</div><button class="btn" onclick="saveCars()">Save cars</button></div>'
+    + '<p class="muted small" style="margin:-6px 0 14px">Turn a car type off to hide it from customers. Keep at least one on.</p>'
+    + '<div class="card">'+rows+'</div>';
+}
+function fldText(label,id,val){ return '<div class="fld"><label>'+label+'</label><input class="input" id="'+id+'" value="'+esc(val)+'"></div>'; }
+async function saveCars(){
+  var anyOn=false;
+  (cfg.vehicles||[]).forEach(function(v,i){
+    var n=document.getElementById('car_name_'+i), b=document.getElementById('car_blurb_'+i), o=document.getElementById('car_on_'+i);
+    if(n) v.name=n.value.trim()||v.name;
+    if(b) v.blurb=b.value.trim();
+    if(o) v.enabled=o.checked;
+    if(v.enabled) anyOn=true;
+  });
+  if(!anyOn){ toast('Keep at least one car turned on'); return; }
+  await saveConfig('Cars updated');
+}
+
+async function saveConfig(msg){
+  try{
+    await sb.from('app_settings').update({ config: cfg, updated_at: new Date().toISOString() }).eq('id',1);
+    toast(msg);
+  }catch(e){ toast('Could not save — try again'); }
+}
+
+// ===== Drivers =====
+function viewDrivers(){
+  var rows = drivers.length ? drivers.map(function(d){
+    return '<tr><td style="font-weight:700">'+esc(d.name)+'</td>'
+      + '<td>'+esc(d.car)+'</td><td class="muted">'+esc(d.plate)+'</td>'
+      + '<td class="muted">'+esc(d.phone)+'</td><td>'+vName(d.vehicle_class)+'</td>'
+      + '<td>'+(d.active?'<span class="pill done">Active</span>':'<span class="pill off">Off</span>')+'</td>'
+      + '<td><button class="btn sec sm" onclick="toggleDriver(\''+d.id+'\','+(d.active?'false':'true')+')">'+(d.active?'Deactivate':'Activate')+'</button></td></tr>';
+  }).join('') : '<tr><td colspan="7" class="empty">No drivers yet.</td></tr>';
+  return '<div class="sectitle">Drivers</div>'
+    + '<div class="card" style="margin-bottom:16px"><div style="font-weight:800;margin-bottom:12px">Add a driver</div>'
+    + '<div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'
+    +   fldText2('Name','nd_name','e.g. John Doherty')
+    +   fldText2('Phone','nd_phone','087 …')
+    +   fldText2('Car','nd_car','e.g. Toyota Prius')
+    +   fldText2('Reg','nd_plate','e.g. 181-D-…')
+    +   '<div class="fld"><label>Car type</label><select class="input" id="nd_class">'+carOptions('standard')+'</select></div>'
+    + '</div><button class="btn" style="margin-top:12px" onclick="addDriver()">＋ Add driver</button></div>'
+    + '<div class="card scroll-x"><table><thead><tr><th>Name</th><th>Car</th><th>Reg</th><th>Phone</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function fldText2(label,id,ph){ return '<div class="fld"><label>'+label+'</label><input class="input" id="'+id+'" placeholder="'+esc(ph)+'"></div>'; }
+function carOptions(sel){ return (cfg.vehicles||[]).map(function(v){ return '<option value="'+esc(v.key)+'"'+(v.key===sel?' selected':'')+'>'+esc(v.name)+'</option>'; }).join(''); }
+async function addDriver(){
+  var name=(document.getElementById('nd_name').value||'').trim();
+  if(!name){ toast('Enter a driver name'); return; }
+  var rec={ name:name, phone:val('nd_phone'), car:val('nd_car'), plate:val('nd_plate'), vehicle_class:val('nd_class')||'standard' };
+  try{ await sb.from('drivers').insert(rec); await loadDrivers(); render(); toast('Driver added'); }catch(e){ toast('Could not add driver'); }
+}
+async function toggleDriver(id,to){
+  try{ await sb.from('drivers').update({active: to==='true'||to===true}).eq('id',id); await loadDrivers(); render(); }catch(e){ toast('Could not update'); }
+}
+function val(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
+
+// ===== Customers =====
+function viewCustomers(){
+  var rows = customers.length ? customers.map(function(c){
+    var trips_n = trips.filter(function(t){ return (t.rider_phone||'')=== c.phone; }).length;
+    return '<tr><td style="font-weight:700">'+esc(c.name||'—')+'</td>'
+      + '<td>'+esc(c.phone)+'</td>'
+      + '<td class="muted">'+new Date(c.created_at).toLocaleDateString('en-IE',{day:'numeric',month:'short',year:'numeric'})+'</td>'
+      + '<td>'+trips_n+'</td></tr>';
+  }).join('') : '<tr><td colspan="4" class="empty">No customers yet. They appear here once someone signs in on the app.</td></tr>';
+  return '<div class="sectitle">Customers ('+customers.length+')</div>'
+    + '<div class="card scroll-x"><table><thead><tr><th>Name</th><th>Mobile</th><th>Joined</th><th>Trips</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+function refresh(){ reloadAll().then(render); }
+
+// auto-open if previously unlocked this session
+if(window._auto) openDash();
+</script>
+</body>
+</html>

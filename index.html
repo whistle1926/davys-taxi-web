@@ -514,6 +514,29 @@ function rerenderCurrent(){
   else if (active.id === 'trips') renderTrips();
 }
 
+// Pricing + which cars show are controlled by the owner dashboard (app_settings).
+async function loadSettings(){
+  if (!BACKEND) return;
+  try {
+    var res = await sb.from('app_settings').select('config').eq('id', 1).single();
+    if (res.data && res.data.config && res.data.config.vehicles && res.data.config.vehicles.length) applyConfig(res.data.config);
+  } catch (e) {}
+}
+function applyConfig(c){
+  var rates = {}, order = [];
+  c.vehicles.forEach(function(v){
+    rates[v.key] = { name: v.name, sub: v.blurb, emoji: v.emoji, base: +v.base, perKm: +v.perKm, perMin: +v.perMin, min: +v.min };
+    if (v.enabled) order.push(v.key);
+  });
+  if (Object.keys(rates).length){ RATES = rates; if (order.length) VEHICLE_ORDER = order; }
+  if (VEHICLE_ORDER.indexOf(state.vehicle) < 0 && VEHICLE_ORDER.length) state.vehicle = VEHICLE_ORDER[0];
+}
+// Record the customer so the owner can see who's signed up.
+async function upsertCustomer(){
+  if (!BACKEND || !account) return;
+  try { await sb.from('customers').upsert({ phone: (account.countryCode || '') + account.phone, name: account.name, country_code: account.countryCode || '' }); } catch (e) {}
+}
+
 // ---------- Data ----------
 var PLACES = [
   { label: 'Carndonagh Town (The Diamond)', lat: 55.2494, lng: -7.2653 },
@@ -1221,6 +1244,7 @@ function enterApp(){
   document.getElementById('hello').textContent = 'Hi, ' + (account.name || '').split(' ')[0] + ' 👋';
   state.name = account.name;
   state.phone = (account.countryCode || '') + ' ' + (account.phone || '');
+  upsertCustomer();
   go('home');
 }
 
@@ -1299,6 +1323,7 @@ function onResetPin(){
 }
 
 initAuth();
+loadSettings();
 
 // ---------- Picker ----------
 function openPicker(field){
