@@ -918,10 +918,13 @@ function renderPlaces(){
 }
 function geocode(query, seq, localHtml){
   // Photon (komoot) — free, keyless OSM geocoder for autocomplete. Biased to
-  // Inishowen via lat/lon so local pubs/hotels/streets rank first.
+  // Inishowen via lat/lon so local pubs/hotels/streets rank first. Bundled
+  // local venues already show instantly; this just adds wider coverage.
   var url = 'https://photon.komoot.io/api/?limit=8&lang=en&lat=55.25&lon=-7.27&q=' + encodeURIComponent(query);
-  fetch(url)
-    .then(function(r){ return r.json(); })
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 6000); // never hang on a slow geocoder
+  fetch(url, { signal: ctrl.signal })
+    .then(function(r){ clearTimeout(to); return r.json(); })
     .then(function(data){
       if (seq !== geoSeq) return; // a newer keystroke superseded this
       var feats = (data && data.features) || [];
@@ -941,6 +944,7 @@ function geocode(query, seq, localHtml){
       }
     })
     .catch(function(){
+      clearTimeout(to);
       if (seq !== geoSeq) return;
       // Local venue matches are the reliable fallback; only prompt if truly nothing.
       var listEl = document.getElementById('place-list');
