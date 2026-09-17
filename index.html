@@ -41,18 +41,15 @@
   #app {
     position: relative;
     width: 100%;
-    max-width: 430px;
     height: 100%;
-    max-height: 932px;
     background: var(--bg);
     overflow: hidden;
     display: flex;
     flex-direction: column;
   }
-  @media (min-width: 460px) {
-    body { padding: 24px; }
-    #app { border-radius: 40px; box-shadow: 0 30px 80px rgba(0,0,0,.6); border: 1px solid #1c2635; height: 900px; }
-  }
+  /* Keep readable content widths while filling the whole screen. */
+  .screen > .scroll, .screen > .footer, .sheet, #welcome > div, .head, .pad { max-width: 620px; margin-left: auto; margin-right: auto; width: 100%; }
+  .map { width: 100%; }
 
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
   .screen.active { display: flex; }
