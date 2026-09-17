@@ -114,6 +114,14 @@
   }
   .input:focus { border-color: var(--primary); }
   .label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block; }
+  .phone-row { display: flex; gap: 8px; }
+  .cc-select { height: 54px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; color: var(--text); font-family: var(--font); font-size: 16px; font-weight: 600; padding: 0 8px; outline: none; }
+  .cc-select:focus { border-color: var(--primary); }
+  .welcome-back { font-size: 22px; font-weight: 800; }
+  .err-text { color: var(--danger); font-size: 13px; text-align: center; margin-top: 10px; min-height: 15px; }
+  .pin-input { text-align: center; letter-spacing: 12px; font-size: 22px; }
+  .acct-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 16px; }
+  .acct-row { display: flex; justify-content: space-between; align-items: center; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; }
 
@@ -196,14 +204,46 @@
     <div class="badge">🚕</div>
     <div class="brand">Davy's Taxi</div>
     <div class="tagline">Book a taxi across Inishowen &amp; Donegal in seconds.</div>
-    <div class="wform" style="margin-top:40px; text-align:left;">
+
+    <!-- New user: name + country code + mobile -->
+    <div class="wform" id="auth-new" style="margin-top:30px; text-align:left;">
       <label class="label">Your name</label>
-      <input id="in-name" class="input" placeholder="e.g. Aoife Doherty" autocomplete="off" />
+      <input id="in-name" class="input" placeholder="e.g. Aoife Doherty" autocomplete="off" oninput="checkNew()" />
       <label class="label" style="margin-top:16px;">Mobile number</label>
-      <input id="in-phone" class="input" inputmode="tel" placeholder="e.g. 087 123 4567" autocomplete="off" />
-      <button id="btn-continue" class="btn btn-primary" style="margin-top:24px;" disabled>Continue</button>
-      <p class="muted small" style="text-align:center;">Demo sign-in — no real account is created.</p>
-      <button class="btn btn-secondary" style="margin-top:6px;" onclick="go('driver-login')">🧑‍✈️ I'm a driver</button>
+      <div class="phone-row">
+        <select id="in-cc" class="cc-select">
+          <option value="+353">🇮🇪 +353</option>
+          <option value="+44">🇬🇧 +44</option>
+        </select>
+        <input id="in-phone" class="input" inputmode="tel" placeholder="87 123 4567" autocomplete="off" oninput="checkNew()" style="flex:1" />
+      </div>
+      <button id="btn-continue" class="btn btn-primary" style="margin-top:24px;" disabled onclick="onNewContinue()">Continue</button>
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="go('driver-login')">🧑‍✈️ I'm a driver</button>
+    </div>
+
+    <!-- Returning user: welcome back + PIN login -->
+    <div class="wform" id="auth-return" style="display:none; margin-top:30px; text-align:left;">
+      <div class="welcome-back">Welcome back, <span id="ret-name">there</span> 👋</div>
+      <div id="ret-pin-wrap">
+        <label class="label" style="margin-top:18px;">Enter your PIN</label>
+        <input id="in-loginpin" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkLogin()" />
+      </div>
+      <div id="login-err" class="err-text"></div>
+      <button id="btn-login" class="btn btn-primary" style="margin-top:6px;" onclick="onLogin()">Log in</button>
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="startOver()">Not you? Start over</button>
+    </div>
+
+    <!-- Create a login PIN (optional) -->
+    <div class="wform" id="auth-pin" style="display:none; margin-top:30px; text-align:left;">
+      <div class="welcome-back">Save your account</div>
+      <p class="muted small" style="margin:6px 0 16px">Create a 4-digit PIN and you can log back in instantly next time.</p>
+      <label class="label">Create PIN</label>
+      <input id="in-pin1" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkPin()" />
+      <label class="label" style="margin-top:12px;">Confirm PIN</label>
+      <input id="in-pin2" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkPin()" />
+      <div id="pin-err" class="err-text"></div>
+      <button id="btn-savepin" class="btn btn-primary" style="margin-top:6px;" disabled onclick="onSavePin()">Save PIN &amp; continue</button>
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="onSkipPin()">Skip for now</button>
     </div>
   </section>
 
@@ -216,7 +256,7 @@
           <div id="hello" style="font-size:20px;font-weight:800;text-shadow:0 1px 6px rgba(0,0,0,.7)">Hi 👋</div>
           <div class="small" style="text-shadow:0 1px 6px rgba(0,0,0,.7)">Where are you headed?</div>
         </div>
-        <div class="pill" onclick="go('trips')">Trips</div>
+        <div class="pill" onclick="go('trips')">Account</div>
       </div>
     </div>
     <div class="sheet">
@@ -307,8 +347,30 @@
 
   <!-- TRIPS -->
   <section id="trips" class="screen">
-    <div class="head"><div class="back" onclick="go('home')">‹</div><h2>Your trips</h2></div>
-    <div class="scroll pad" id="trips-list" style="margin-top:8px"></div>
+    <div class="head"><div class="back" onclick="go('home')">‹</div><h2>Your account</h2></div>
+    <div class="scroll pad" style="margin-top:8px">
+      <div class="acct-card">
+        <div class="acct-row">
+          <div>
+            <div style="font-weight:800;font-size:18px" id="acct-name">—</div>
+            <div class="muted small" id="acct-phone">—</div>
+          </div>
+          <div class="avatar" id="acct-initials">A</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button class="btn btn-secondary" style="height:44px;font-size:14px" onclick="toggleResetPin()">🔒 Reset PIN</button>
+          <button class="btn btn-secondary" style="height:44px;font-size:14px" onclick="riderSignOut()">Sign out</button>
+        </div>
+        <div id="reset-pin-box" style="display:none;margin-top:12px">
+          <input id="reset-pin1" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="New PIN" oninput="checkResetPin()" />
+          <input id="reset-pin2" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="Confirm" style="margin-top:8px" oninput="checkResetPin()" />
+          <div id="reset-err" class="err-text"></div>
+          <button id="btn-reset-save" class="btn btn-primary" style="height:44px" disabled onclick="onResetPin()">Save new PIN</button>
+        </div>
+      </div>
+      <div class="section" style="margin:4px 0 12px">Your trips</div>
+      <div id="trips-list"></div>
+    </div>
   </section>
 
   <!-- DRIVER LOGIN -->
@@ -552,7 +614,7 @@ function go(id) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   if (id === 'review') renderReview();
-  if (id === 'trips') { renderTrips(); if (BACKEND) refreshFromBackend().then(renderTrips); }
+  if (id === 'trips') { renderAccount(); renderTrips(); if (BACKEND) refreshFromBackend().then(renderTrips); }
   if (id === 'home') updateMap();
   if (id === 'driver-home') { setupRealtime(); renderDriverHome(); if (BACKEND) refreshFromBackend().then(renderDriverHome); }
   if (id === 'driver-trip') renderDriverTrip();
@@ -564,17 +626,118 @@ function toast(msg) {
   clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('show'); }, 1600);
 }
 
-// ---------- Welcome ----------
-var nameEl = document.getElementById('in-name'), phoneEl = document.getElementById('in-phone'), contBtn = document.getElementById('btn-continue');
-function checkWelcome(){ contBtn.disabled = !(nameEl.value.trim().length > 1 && phoneEl.value.trim().length >= 7); }
-nameEl.addEventListener('input', checkWelcome);
-phoneEl.addEventListener('input', checkWelcome);
-contBtn.addEventListener('click', function(){
-  state.name = nameEl.value.trim();
-  state.phone = phoneEl.value.trim();
-  document.getElementById('hello').textContent = 'Hi, ' + state.name.split(' ')[0] + ' 👋';
+// ---------- Accounts & sign-in ----------
+// Stored on the device for now; moves to Supabase when the backend is connected.
+var account = null;
+try { account = JSON.parse(localStorage.getItem('davys.account') || 'null'); } catch (e) { account = null; }
+function saveAccountStore(){ try { localStorage.setItem('davys.account', JSON.stringify(account)); } catch (e) {} }
+
+function showAuth(view){
+  ['new', 'return', 'pin'].forEach(function(v){
+    var el = document.getElementById('auth-' + v);
+    if (el) el.style.display = (v === view ? 'block' : 'none');
+  });
+}
+function initAuth(){
+  if (account && account.name){
+    document.getElementById('ret-name').textContent = account.name.split(' ')[0];
+    var wrap = document.getElementById('ret-pin-wrap');
+    document.getElementById('login-err').textContent = '';
+    if (account.pin){
+      wrap.style.display = 'block';
+      document.getElementById('in-loginpin').value = '';
+      document.getElementById('btn-login').disabled = true;
+    } else {
+      wrap.style.display = 'none';
+      document.getElementById('btn-login').disabled = false;
+    }
+    showAuth('return');
+  } else {
+    showAuth('new');
+  }
+}
+function enterApp(){
+  document.getElementById('hello').textContent = 'Hi, ' + (account.name || '').split(' ')[0] + ' 👋';
+  state.name = account.name;
+  state.phone = (account.countryCode || '') + ' ' + (account.phone || '');
   go('home');
-});
+}
+
+function checkNew(){
+  var ok = document.getElementById('in-name').value.trim().length > 1 && document.getElementById('in-phone').value.trim().length >= 6;
+  document.getElementById('btn-continue').disabled = !ok;
+}
+function onNewContinue(){
+  account = {
+    name: document.getElementById('in-name').value.trim(),
+    countryCode: document.getElementById('in-cc').value,
+    phone: document.getElementById('in-phone').value.trim(),
+    pin: null, createdAt: Date.now(),
+  };
+  saveAccountStore();     // save the account immediately (low friction)
+  showAuth('pin');        // then offer a login PIN
+}
+
+function checkPin(){
+  var a = document.getElementById('in-pin1').value.trim(), b = document.getElementById('in-pin2').value.trim();
+  document.getElementById('btn-savepin').disabled = !(a.length === 4 && b.length === 4);
+}
+function onSavePin(){
+  var a = document.getElementById('in-pin1').value.trim(), b = document.getElementById('in-pin2').value.trim();
+  if (a !== b){ document.getElementById('pin-err').textContent = 'PINs don’t match — try again.'; return; }
+  document.getElementById('pin-err').textContent = '';
+  account.pin = a; saveAccountStore();
+  enterApp();
+}
+function onSkipPin(){ enterApp(); }
+
+function checkLogin(){ document.getElementById('btn-login').disabled = document.getElementById('in-loginpin').value.trim().length < 4; }
+function onLogin(){
+  if (account.pin){
+    if (document.getElementById('in-loginpin').value.trim() !== String(account.pin)){
+      document.getElementById('login-err').textContent = 'Incorrect PIN — try again.'; return;
+    }
+  }
+  document.getElementById('login-err').textContent = '';
+  enterApp();
+}
+function startOver(){
+  account = null;
+  try { localStorage.removeItem('davys.account'); } catch (e) {}
+  document.getElementById('in-name').value = '';
+  document.getElementById('in-phone').value = '';
+  checkNew();
+  showAuth('new');
+}
+
+function riderSignOut(){ go('welcome'); initAuth(); }
+function renderAccount(){
+  if (!account) return;
+  document.getElementById('acct-name').textContent = account.name || '—';
+  document.getElementById('acct-phone').textContent = ((account.countryCode || '') + ' ' + (account.phone || '')).trim();
+  document.getElementById('acct-initials').textContent =
+    (account.name || 'A').split(' ').map(function(s){ return s[0]; }).slice(0, 2).join('').toUpperCase();
+  document.getElementById('reset-pin-box').style.display = 'none';
+}
+function toggleResetPin(){
+  var b = document.getElementById('reset-pin-box');
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+function checkResetPin(){
+  var a = document.getElementById('reset-pin1').value.trim(), b = document.getElementById('reset-pin2').value.trim();
+  document.getElementById('btn-reset-save').disabled = !(a.length === 4 && b.length === 4);
+}
+function onResetPin(){
+  var a = document.getElementById('reset-pin1').value.trim(), b = document.getElementById('reset-pin2').value.trim();
+  if (a !== b){ document.getElementById('reset-err').textContent = 'PINs don’t match.'; return; }
+  account.pin = a; saveAccountStore();
+  document.getElementById('reset-err').textContent = '';
+  document.getElementById('reset-pin1').value = ''; document.getElementById('reset-pin2').value = '';
+  document.getElementById('reset-pin-box').style.display = 'none';
+  toast('PIN updated');
+}
+
+initAuth();
 
 // ---------- Picker ----------
 function openPicker(field){
