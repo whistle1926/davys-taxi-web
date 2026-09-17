@@ -8,6 +8,7 @@
 <meta name="description" content="Book a taxi across Inishowen & Donegal — Davy's Taxi." />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
@@ -345,6 +346,89 @@
 </div>
 
 <script>
+// ==================== Supabase backend config ====================
+// Paste your project's values here to switch on the real, cross-device backend
+// (Supabase → Project Settings → API). Both are safe to expose in a browser app.
+// Leave blank and the app runs on-device only (the standalone demo).
+var SUPABASE_URL = '';
+var SUPABASE_ANON_KEY = '';
+
+var sb = null, BACKEND = false;
+try {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    BACKEND = true;
+  }
+} catch (e) { BACKEND = false; }
+
+// A stable per-device id so a rider sees their own bookings across sessions.
+var DEVICE_ID;
+try {
+  DEVICE_ID = localStorage.getItem('davys.device');
+  if (!DEVICE_ID) { DEVICE_ID = 'D' + Math.random().toString(36).slice(2, 10); localStorage.setItem('davys.device', DEVICE_ID); }
+} catch (e) { DEVICE_ID = 'D' + Math.random().toString(36).slice(2, 10); }
+
+// Map between the app's trip shape and the demo_trips table row.
+function fromRow(r){
+  return { id: r.id, at: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+    pickup: r.pickup_label, dropoff: r.dropoff_label, plat: r.pickup_lat, plng: r.pickup_lng,
+    dlat: r.dropoff_lat, dlng: r.dropoff_lng, km: Number(r.distance_km), min: r.duration_min,
+    vehicle: r.vehicle, payment: r.payment, fare: Number(r.fare), status: r.status,
+    driver: r.driver_name, pin: r.pin, source: r.source, device: r.device_id };
+}
+function toRow(t){
+  return { id: t.id, rider_name: t.rider_name || null, rider_phone: t.rider_phone || null,
+    device_id: t.device || DEVICE_ID, pickup_label: t.pickup, pickup_lat: t.plat, pickup_lng: t.plng,
+    dropoff_label: t.dropoff, dropoff_lat: t.dlat, dropoff_lng: t.dlng, distance_km: t.km,
+    duration_min: t.min, vehicle: t.vehicle, payment: t.payment, fare: t.fare, status: t.status,
+    driver_name: t.driver, pin: t.pin, source: t.source };
+}
+
+async function refreshFromBackend(){
+  if (!BACKEND) return;
+  try {
+    var res = await sb.from('demo_trips').select('*').order('created_at', { ascending: false });
+    if (res.data) trips = res.data.map(fromRow);
+  } catch (e) {}
+}
+async function createTripRecord(t){
+  if (BACKEND) { try { await sb.from('demo_trips').insert(toRow(t)); await refreshFromBackend(); } catch (e) {} }
+  else { trips.unshift(t); saveTrips(); }
+}
+async function updateTripRecord(id, patch){
+  if (BACKEND) {
+    var rowPatch = {};
+    if ('status' in patch) rowPatch.status = patch.status;
+    if ('driver' in patch) rowPatch.driver_name = patch.driver;
+    try { await sb.from('demo_trips').update(rowPatch).eq('id', id); await refreshFromBackend(); } catch (e) {}
+  } else {
+    var t = trips.find(function(x){ return x.id === id; });
+    if (t) Object.assign(t, patch);
+    saveTrips();
+  }
+}
+
+var realtimeSet = false;
+function setupRealtime(){
+  if (!BACKEND || realtimeSet) return;
+  realtimeSet = true;
+  try {
+    sb.channel('demo_trips_ch')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo_trips' }, async function(){
+        await refreshFromBackend();
+        rerenderCurrent();
+      })
+      .subscribe();
+  } catch (e) {}
+}
+function rerenderCurrent(){
+  var active = document.querySelector('.screen.active');
+  if (!active) return;
+  if (active.id === 'driver-home') renderDriverHome();
+  else if (active.id === 'driver-trip') renderDriverTrip();
+  else if (active.id === 'trips') renderTrips();
+}
+
 // ---------- Data ----------
 var PLACES = [
   { label: 'Carndonagh Town (The Diamond)', lat: 55.2494, lng: -7.2653 },
@@ -412,9 +496,9 @@ function go(id) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   if (id === 'review') renderReview();
-  if (id === 'trips') renderTrips();
+  if (id === 'trips') { renderTrips(); if (BACKEND) refreshFromBackend().then(renderTrips); }
   if (id === 'home') updateMap();
-  if (id === 'driver-home') renderDriverHome();
+  if (id === 'driver-home') { setupRealtime(); renderDriverHome(); if (BACKEND) refreshFromBackend().then(renderDriverHome); }
   if (id === 'driver-trip') renderDriverTrip();
 }
 
@@ -431,6 +515,7 @@ nameEl.addEventListener('input', checkWelcome);
 phoneEl.addEventListener('input', checkWelcome);
 contBtn.addEventListener('click', function(){
   state.name = nameEl.value.trim();
+  state.phone = phoneEl.value.trim();
   document.getElementById('hello').textContent = 'Hi, ' + state.name.split(' ')[0] + ' 👋';
   go('home');
 });
@@ -496,7 +581,7 @@ function pickVehicle(k){ state.vehicle = k; renderReview(); }
 function pickPayment(k){ state.payment = k; renderReview(); }
 
 // ---------- Booking ----------
-function book(){
+async function book(){
   var f = estimate(state.pickup, state.dropoff, state.vehicle);
   var trip = {
     id: 'T' + Date.now().toString(36).toUpperCase(),
@@ -504,9 +589,9 @@ function book(){
     plat: state.pickup.lat, plng: state.pickup.lng, dlat: state.dropoff.lat, dlng: state.dropoff.lng,
     km: f.km, min: f.min, vehicle: state.vehicle, payment: state.payment, fare: f.total,
     status: 'requested', driver: null, source: 'rider', pin: makePin(),
+    rider_name: state.name, rider_phone: state.phone, device: DEVICE_ID,
   };
-  trips.unshift(trip);
-  try { localStorage.setItem('davys.trips', JSON.stringify(trips)); } catch(e) {}
+  await createTripRecord(trip);
 
   document.getElementById('conf-searching').style.display = 'flex';
   document.getElementById('conf-found').style.display = 'none';
@@ -538,7 +623,7 @@ function finishTrip(){
 
 // ---------- Trips ----------
 function renderTrips(){
-  var mine = trips.filter(function(t){ return t.source === 'rider'; });
+  var mine = trips.filter(function(t){ return t.source === 'rider' && (t.device ? t.device === DEVICE_ID : true); });
   if (!mine.length) { document.getElementById('trips-list').innerHTML = '<div class="empty"><div style="font-size:44px">🚕</div><div style="font-weight:700;margin-top:8px">No trips yet</div><div class="small">Your booked rides will appear here.</div></div>'; return; }
   document.getElementById('trips-list').innerHTML = mine.map(function(t){
     var v = RATES[t.vehicle];
@@ -653,28 +738,24 @@ function renderDriverHome(){
   } else { doneTitle.style.display = 'none'; doneEl.innerHTML = ''; }
 }
 
-function addTestJob(){
-  reloadTrips();
+async function addTestJob(){
   var a = PLACES[Math.floor(Math.random() * PLACES.length)];
   var b = PLACES[Math.floor(Math.random() * PLACES.length)];
   var guard = 0; while (b.label === a.label && guard++ < 20) { b = PLACES[Math.floor(Math.random() * PLACES.length)]; }
   var f = estimate(a, b, 'standard');
-  trips.unshift({ id: 'T' + Date.now().toString(36).toUpperCase(), at: Date.now(),
+  await createTripRecord({ id: 'T' + Date.now().toString(36).toUpperCase(), at: Date.now(),
     pickup: a.label, dropoff: b.label, plat: a.lat, plng: a.lng, dlat: b.lat, dlng: b.lng,
-    km: f.km, min: f.min, vehicle: 'standard', payment: 'card', fare: f.total, status: 'requested', driver: null, source: 'test', pin: makePin() });
-  saveTrips();
+    km: f.km, min: f.min, vehicle: 'standard', payment: 'card', fare: f.total, status: 'requested',
+    driver: null, source: 'test', pin: makePin(), device: DEVICE_ID });
   renderDriverHome();
 }
 
-function acceptJob(id){
-  reloadTrips();
-  var t = trips.find(function(x){ return x.id === id; }); if (!t) return;
-  t.status = 'accepted'; t.driver = driver.name; saveTrips();
+async function acceptJob(id){
+  await updateTripRecord(id, { status: 'accepted', driver: driver.name });
   openTrip(id);
 }
-function declineJob(id){
-  reloadTrips();
-  var t = trips.find(function(x){ return x.id === id; }); if (t){ t.status = 'declined'; saveTrips(); }
+async function declineJob(id){
+  await updateTripRecord(id, { status: 'declined' });
   renderDriverHome();
 }
 function openTrip(id){ driver.activeId = id; go('driver-trip'); }
@@ -710,8 +791,7 @@ function renderDriverTrip(){
   drawDriverMap(t);
 }
 
-function advanceTrip(){
-  reloadTrips();
+async function advanceTrip(){
   var t = trips.find(function(x){ return x.id === driver.activeId; });
   if (!t){ go('driver-home'); return; }
   if (t.status === 'completed'){ go('driver-home'); return; }
@@ -722,11 +802,12 @@ function advanceTrip(){
     if (val !== String(t.pin)){ toast('PIN doesn’t match — check with the rider'); return; }
   }
   var idx = STEP_FLOW.indexOf(t.status);
-  t.status = STEP_FLOW[Math.min(idx + 1, STEP_FLOW.length - 1)];
-  saveTrips();
-  if (t.status === 'completed'){
+  var next = STEP_FLOW[Math.min(idx + 1, STEP_FLOW.length - 1)];
+  var fare = t.fare;
+  await updateTripRecord(driver.activeId, { status: next });
+  if (next === 'completed'){
     renderDriverTrip();
-    setTimeout(function(){ go('driver-home'); toast('Trip completed — ' + euro(t.fare) + ' earned'); }, 800);
+    setTimeout(function(){ go('driver-home'); toast('Trip completed — ' + euro(fare) + ' earned'); }, 800);
   } else {
     renderDriverTrip();
   }
