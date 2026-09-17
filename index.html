@@ -48,7 +48,7 @@
     flex-direction: column;
   }
   /* Keep readable content widths while filling the whole screen. */
-  .screen > .scroll, .screen > .footer, .sheet, #welcome > div, .head, .pad { max-width: 620px; margin-left: auto; margin-right: auto; width: 100%; }
+  .screen > .scroll, .screen > .footer, .sheet, #welcome .wform, .head, .pad { max-width: 620px; margin-left: auto; margin-right: auto; width: 100%; }
   .map { width: 100%; }
 
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
@@ -157,7 +157,7 @@
     <div class="badge">🚕</div>
     <div class="brand">Davy's Taxi</div>
     <div class="tagline">Book a taxi across Inishowen &amp; Donegal in seconds.</div>
-    <div style="width:100%; margin-top:40px; text-align:left;">
+    <div class="wform" style="margin-top:40px; text-align:left;">
       <label class="label">Your name</label>
       <input id="in-name" class="input" placeholder="e.g. Aoife Doherty" autocomplete="off" />
       <label class="label" style="margin-top:16px;">Mobile number</label>
