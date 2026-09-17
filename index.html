@@ -277,7 +277,8 @@
           <div class="grow"><div style="font-weight:700">Martin K. · ⭐ 4.9</div><div class="muted small">Toyota Prius · 181-D-4472</div></div>
         </div>
       </div>
-      <div class="card" id="conf-details" style="width:100%;margin-top:20px"></div>
+      <div class="card" id="conf-pin" style="width:100%;margin-top:14px;display:none;text-align:center"></div>
+      <div class="card" id="conf-details" style="width:100%;margin-top:14px"></div>
     </div>
     <div class="footer"><button class="btn btn-primary" onclick="finishTrip()">Done</button></div>
   </section>
@@ -323,6 +324,8 @@
         <button class="link-btn" onclick="addTestJob()">＋ Add test job</button>
       </div>
       <div id="drv-jobs"></div>
+      <div class="section" id="drv-done-title" style="display:none">Completed trips</div>
+      <div id="drv-done"></div>
     </div>
   </section>
 
@@ -333,6 +336,7 @@
       <div id="dmap-wrap"><div id="dmap"></div></div>
       <div class="card" style="margin-top:14px" id="dtrip-info"></div>
       <div class="card" style="margin-top:12px" id="dtrip-steps"></div>
+      <div class="card" style="margin-top:12px;display:none" id="dtrip-verify"></div>
     </div>
     <div class="footer"><button class="btn btn-primary" id="dtrip-action" onclick="advanceTrip()">Continue</button></div>
   </section>
@@ -401,6 +405,7 @@ function estimate(pickup, dropoff, vkey) {
   return { km: km, min: min, base: t.base, dist: r2(distCharge), time: r2(timeCharge), total: r2(total) };
 }
 function r2(n){ return Math.round(n*100)/100; }
+function makePin(){ return String(Math.floor(1000 + Math.random() * 9000)); }
 
 // ---------- Navigation ----------
 function go(id) {
@@ -498,13 +503,17 @@ function book(){
     at: Date.now(), pickup: state.pickup.label, dropoff: state.dropoff.label,
     plat: state.pickup.lat, plng: state.pickup.lng, dlat: state.dropoff.lat, dlng: state.dropoff.lng,
     km: f.km, min: f.min, vehicle: state.vehicle, payment: state.payment, fare: f.total,
-    status: 'requested', driver: null, source: 'rider',
+    status: 'requested', driver: null, source: 'rider', pin: makePin(),
   };
   trips.unshift(trip);
   try { localStorage.setItem('davys.trips', JSON.stringify(trips)); } catch(e) {}
 
   document.getElementById('conf-searching').style.display = 'flex';
   document.getElementById('conf-found').style.display = 'none';
+  var pinEl = document.getElementById('conf-pin');
+  pinEl.style.display = 'block';
+  pinEl.innerHTML = '<div class="muted small" style="margin-bottom:6px">Show this PIN to your driver at pickup</div>' +
+    '<div style="font-size:34px;font-weight:800;letter-spacing:10px;color:var(--primary)">' + trip.pin + '</div>';
   document.getElementById('conf-details').innerHTML =
     detailRow('Booking', trip.id) + detailRow('Ride', RATES[trip.vehicle].name) +
     detailRow('Distance', '~' + trip.km + ' km · ~' + trip.min + ' min') +
@@ -536,7 +545,7 @@ function renderTrips(){
     var d = new Date(t.at).toLocaleDateString('en-IE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
     return '<div class="trip"><div class="th"><span class="muted small">' + d + '</span><span style="color:var(--primary);font-weight:800">' + euro(t.fare) + '</span></div>' +
       '<div style="font-weight:600">' + t.pickup + '  →  ' + t.dropoff + '</div>' +
-      '<div class="muted small" style="margin-top:2px">' + v.emoji + ' ' + v.name + ' · ~' + t.km + ' km</div></div>';
+      '<div class="muted small" style="margin-top:2px">' + v.emoji + ' ' + v.name + ' · ~' + t.km + ' km · ' + (t.status === 'completed' ? '✓ Completed' : (t.status === 'requested' || !t.status ? 'Booked' : 'In progress')) + (t.pin ? ' · PIN ' + t.pin : '') + '</div></div>';
   }).join('');
 }
 
@@ -589,7 +598,7 @@ function redrawRoute(){
 var driver = { name: '', activeId: null };
 var STEP_FLOW = ['accepted', 'arriving', 'arrived', 'in_progress', 'completed'];
 var STEP_LABEL = { accepted: 'Job accepted', arriving: 'Heading to pickup', arrived: 'Arrived at pickup', in_progress: 'Trip in progress', completed: 'Trip complete' };
-var ACTION_LABEL = { accepted: 'Start heading to pickup', arriving: 'I’ve arrived', arrived: 'Start trip', in_progress: 'Complete trip' };
+var ACTION_LABEL = { accepted: 'Start heading to pickup', arriving: 'I’ve arrived', arrived: 'Verify PIN & start trip', in_progress: 'Complete trip' };
 
 // `trips` (module-level) is the source of truth for the session; storage is a
 // best-effort mirror so it survives a page reload where available. We never
@@ -629,6 +638,19 @@ function renderDriverHome(){
       '<div class="jrow"><span class="dot" style="background:var(--primary)"></span><div class="rv">' + t.dropoff + '</div></div>' +
       '<div class="jactions"><button class="btn btn-secondary" onclick="declineJob(\'' + t.id + '\')">Decline</button><button class="btn btn-primary" onclick="acceptJob(\'' + t.id + '\')">Accept job</button></div></div>';
   }).join('') : '<div class="empty" style="margin-top:16px"><div style="font-size:40px">🕓</div><div style="font-weight:700;margin-top:6px">No jobs right now</div><div class="small">Rider bookings appear here. Tap “Add test job” to try it.</div></div>';
+
+  // Completed trips history
+  var doneTitle = document.getElementById('drv-done-title');
+  var doneEl = document.getElementById('drv-done');
+  if (done.length){
+    doneTitle.style.display = 'block';
+    doneEl.innerHTML = done.map(function(t){
+      var when = new Date(t.at).toLocaleTimeString('en-IE', { hour: '2-digit', minute: '2-digit' });
+      return '<div class="job"><div class="jf"><div class="muted small">✓ ' + when + ' · PIN ' + (t.pin || '—') + '</div><div class="jfare">' + euro(t.fare) + '</div></div>' +
+        '<div class="rv" style="font-weight:600">' + t.pickup + ' → ' + t.dropoff + '</div>' +
+        '<div class="muted small" style="margin-top:2px">' + RATES[t.vehicle].name + ' · ~' + t.km + ' km · ' + PAY_LABEL[t.payment] + '</div></div>';
+    }).join('');
+  } else { doneTitle.style.display = 'none'; doneEl.innerHTML = ''; }
 }
 
 function addTestJob(){
@@ -639,7 +661,7 @@ function addTestJob(){
   var f = estimate(a, b, 'standard');
   trips.unshift({ id: 'T' + Date.now().toString(36).toUpperCase(), at: Date.now(),
     pickup: a.label, dropoff: b.label, plat: a.lat, plng: a.lng, dlat: b.lat, dlng: b.lng,
-    km: f.km, min: f.min, vehicle: 'standard', payment: 'card', fare: f.total, status: 'requested', driver: null, source: 'test' });
+    km: f.km, min: f.min, vehicle: 'standard', payment: 'card', fare: f.total, status: 'requested', driver: null, source: 'test', pin: makePin() });
   saveTrips();
   renderDriverHome();
 }
@@ -675,6 +697,16 @@ function renderDriverTrip(){
   }).join('');
 
   document.getElementById('dtrip-action').textContent = t.status === 'completed' ? 'Back to jobs' : (ACTION_LABEL[t.status] || 'Continue');
+
+  // At the pickup, the driver must confirm the rider's PIN before starting.
+  var vEl = document.getElementById('dtrip-verify');
+  if (t.status === 'arrived'){
+    vEl.style.display = 'block';
+    vEl.innerHTML = '<div style="font-weight:800;margin-bottom:4px">🔒 Verify your rider</div>' +
+      '<div class="muted small" style="margin-bottom:10px">Ask the rider for their 4-digit pickup PIN and enter it to start the trip. <span style="opacity:.7">(Demo PIN: ' + t.pin + ')</span></div>' +
+      '<input id="pin-input" class="input" inputmode="numeric" maxlength="4" placeholder="• • • •" style="text-align:center;letter-spacing:12px;font-size:24px" />';
+  } else { vEl.style.display = 'none'; vEl.innerHTML = ''; }
+
   drawDriverMap(t);
 }
 
@@ -683,6 +715,12 @@ function advanceTrip(){
   var t = trips.find(function(x){ return x.id === driver.activeId; });
   if (!t){ go('driver-home'); return; }
   if (t.status === 'completed'){ go('driver-home'); return; }
+  // Gate the start of the trip on the rider's PIN.
+  if (t.status === 'arrived'){
+    var input = document.getElementById('pin-input');
+    var val = input ? input.value.trim() : '';
+    if (val !== String(t.pin)){ toast('PIN doesn’t match — check with the rider'); return; }
+  }
   var idx = STEP_FLOW.indexOf(t.status);
   t.status = STEP_FLOW[Math.min(idx + 1, STEP_FLOW.length - 1)];
   saveTrips();
