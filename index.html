@@ -48,8 +48,30 @@
     flex-direction: column;
   }
   /* Keep readable content widths while filling the whole screen. */
-  .screen > .scroll, .screen > .footer, .sheet, #welcome .wform, .head, .pad { max-width: 620px; margin-left: auto; margin-right: auto; width: 100%; }
+  .screen > .scroll, .screen > .footer, .sheet, .wform, .head, .pad { max-width: 620px; margin-left: auto; margin-right: auto; width: 100%; }
   .map { width: 100%; }
+  .btn-secondary { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+  .link-btn { background: none; border: none; color: var(--primary); font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; }
+
+  /* Driver app */
+  .dtop { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px; max-width: 620px; margin: 0 auto; width: 100%; }
+  .online { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--success); margin-top: 3px; }
+  .online .dotp { width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(52,211,153,.25); }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; }
+  .stat .k { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .stat .v { font-size: 22px; font-weight: 800; margin-top: 2px; }
+  .job { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+  .job .jf { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .jfare { color: var(--primary); font-weight: 800; font-size: 18px; }
+  .jrow { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+  .jactions { display: flex; gap: 10px; margin-top: 12px; }
+  .jactions .btn { height: 44px; font-size: 14px; }
+  .step { display: flex; align-items: center; gap: 12px; padding: 8px 0; color: var(--muted); }
+  .step.done { color: var(--text); }
+  .step .sc { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
+  .step.done .sc { background: var(--success); border-color: var(--success); color: #04120B; font-weight: 800; }
+  #dmap-wrap { position: relative; height: 220px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+  #dmap { position: absolute; inset: 0; background: #0a1a2b; }
 
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
   .screen.active { display: flex; }
@@ -164,6 +186,7 @@
       <input id="in-phone" class="input" inputmode="tel" placeholder="e.g. 087 123 4567" autocomplete="off" />
       <button id="btn-continue" class="btn btn-primary" style="margin-top:24px;" disabled>Continue</button>
       <p class="muted small" style="text-align:center;">Demo sign-in — no real account is created.</p>
+      <button class="btn btn-secondary" style="margin-top:6px;" onclick="go('driver-login')">🧑‍✈️ I'm a driver</button>
     </div>
   </section>
 
@@ -265,6 +288,55 @@
     <div class="scroll pad" id="trips-list" style="margin-top:8px"></div>
   </section>
 
+  <!-- DRIVER LOGIN -->
+  <section id="driver-login" class="screen">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px">
+      <div class="badge" style="background:#111827;border:2px solid var(--primary)">🧑‍✈️</div>
+      <div class="brand">Driver sign-in</div>
+      <div class="tagline">Davy's Taxi — driver app</div>
+      <div class="wform" style="margin-top:32px;text-align:left;">
+        <label class="label">Driver name</label>
+        <input id="drv-name" class="input" placeholder="e.g. Martin Kelly" autocomplete="off" />
+        <button class="btn btn-primary" style="margin-top:20px" onclick="driverLogin()">Go online</button>
+        <button class="link-btn" style="display:block;margin:16px auto 0" onclick="go('welcome')">← Back to rider app</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DRIVER HOME -->
+  <section id="driver-home" class="screen">
+    <div class="dtop">
+      <div>
+        <div style="font-size:20px;font-weight:800" id="drv-hello">Driver</div>
+        <div class="online"><span class="dotp"></span><span>Online — ready for jobs</span></div>
+      </div>
+      <div class="pill" onclick="driverSignOut()">Sign out</div>
+    </div>
+    <div class="scroll pad">
+      <div style="display:flex;gap:12px;margin:8px 0 18px">
+        <div class="stat grow"><div class="k">Today's earnings</div><div class="v" id="drv-earn">€0.00</div></div>
+        <div class="stat grow"><div class="k">Trips done</div><div class="v" id="drv-count">0</div></div>
+      </div>
+      <div id="drv-active"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section" style="margin:0">New jobs</div>
+        <button class="link-btn" onclick="addTestJob()">＋ Add test job</button>
+      </div>
+      <div id="drv-jobs"></div>
+    </div>
+  </section>
+
+  <!-- DRIVER ACTIVE TRIP -->
+  <section id="driver-trip" class="screen">
+    <div class="head"><div class="back" onclick="go('driver-home')">‹</div><h2>Active trip</h2></div>
+    <div class="scroll pad">
+      <div id="dmap-wrap"><div id="dmap"></div></div>
+      <div class="card" style="margin-top:14px" id="dtrip-info"></div>
+      <div class="card" style="margin-top:12px" id="dtrip-steps"></div>
+    </div>
+    <div class="footer"><button class="btn btn-primary" id="dtrip-action" onclick="advanceTrip()">Continue</button></div>
+  </section>
+
   <div class="toast" id="toast"></div>
 </div>
 
@@ -337,6 +409,8 @@ function go(id) {
   if (id === 'review') renderReview();
   if (id === 'trips') renderTrips();
   if (id === 'home') updateMap();
+  if (id === 'driver-home') renderDriverHome();
+  if (id === 'driver-trip') renderDriverTrip();
 }
 
 function toast(msg) {
@@ -422,7 +496,9 @@ function book(){
   var trip = {
     id: 'T' + Date.now().toString(36).toUpperCase(),
     at: Date.now(), pickup: state.pickup.label, dropoff: state.dropoff.label,
+    plat: state.pickup.lat, plng: state.pickup.lng, dlat: state.dropoff.lat, dlng: state.dropoff.lng,
     km: f.km, min: f.min, vehicle: state.vehicle, payment: state.payment, fare: f.total,
+    status: 'requested', driver: null, source: 'rider',
   };
   trips.unshift(trip);
   try { localStorage.setItem('davys.trips', JSON.stringify(trips)); } catch(e) {}
@@ -453,8 +529,9 @@ function finishTrip(){
 
 // ---------- Trips ----------
 function renderTrips(){
-  if (!trips.length) { document.getElementById('trips-list').innerHTML = '<div class="empty"><div style="font-size:44px">🚕</div><div style="font-weight:700;margin-top:8px">No trips yet</div><div class="small">Your booked rides will appear here.</div></div>'; return; }
-  document.getElementById('trips-list').innerHTML = trips.map(function(t){
+  var mine = trips.filter(function(t){ return t.source === 'rider'; });
+  if (!mine.length) { document.getElementById('trips-list').innerHTML = '<div class="empty"><div style="font-size:44px">🚕</div><div style="font-weight:700;margin-top:8px">No trips yet</div><div class="small">Your booked rides will appear here.</div></div>'; return; }
+  document.getElementById('trips-list').innerHTML = mine.map(function(t){
     var v = RATES[t.vehicle];
     var d = new Date(t.at).toLocaleDateString('en-IE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
     return '<div class="trip"><div class="th"><span class="muted small">' + d + '</span><span style="color:var(--primary);font-weight:800">' + euro(t.fare) + '</span></div>' +
@@ -506,6 +583,134 @@ function redrawRoute(){
   } else {
     map.setView(CARNDONAGH, 10);
   }
+}
+
+// ---------- Driver app ----------
+var driver = { name: '', activeId: null };
+var STEP_FLOW = ['accepted', 'arriving', 'arrived', 'in_progress', 'completed'];
+var STEP_LABEL = { accepted: 'Job accepted', arriving: 'Heading to pickup', arrived: 'Arrived at pickup', in_progress: 'Trip in progress', completed: 'Trip complete' };
+var ACTION_LABEL = { accepted: 'Start heading to pickup', arriving: 'I’ve arrived', arrived: 'Start trip', in_progress: 'Complete trip' };
+
+function reloadTrips(){ try { trips = JSON.parse(localStorage.getItem('davys.trips') || '[]'); } catch(e){ trips = []; } }
+function saveTrips(){ try { localStorage.setItem('davys.trips', JSON.stringify(trips)); } catch(e){} }
+
+function driverLogin(){
+  var n = document.getElementById('drv-name').value.trim() || 'Driver';
+  driver.name = n;
+  document.getElementById('drv-hello').textContent = n.split(' ')[0] + ' 🧑‍✈️';
+  go('driver-home');
+}
+function driverSignOut(){ driver.name = ''; driver.activeId = null; go('welcome'); }
+
+function renderDriverHome(){
+  reloadTrips();
+  var done = trips.filter(function(t){ return t.driver === driver.name && t.status === 'completed'; });
+  document.getElementById('drv-earn').textContent = euro(done.reduce(function(s,t){ return s + t.fare; }, 0));
+  document.getElementById('drv-count').textContent = done.length;
+
+  var active = trips.find(function(t){ return t.driver === driver.name && STEP_FLOW.indexOf(t.status) >= 0 && t.status !== 'completed'; });
+  var actEl = document.getElementById('drv-active');
+  if (active){
+    driver.activeId = active.id;
+    actEl.innerHTML = '<div class="job" style="border-color:var(--primary)"><div class="jf"><div style="font-weight:800">🚕 Active trip</div><div class="jfare">' + euro(active.fare) + '</div></div>' +
+      '<div class="jrow"><span class="dot" style="background:var(--success)"></span><div class="rv">' + active.pickup + '</div></div>' +
+      '<div class="jrow"><span class="dot" style="background:var(--primary)"></span><div class="rv">' + active.dropoff + '</div></div>' +
+      '<button class="btn btn-primary" style="height:46px;margin-top:12px" onclick="openTrip(\'' + active.id + '\')">Continue trip</button></div>';
+  } else { actEl.innerHTML = ''; }
+
+  var jobs = trips.filter(function(t){ return t.status === 'requested'; });
+  document.getElementById('drv-jobs').innerHTML = jobs.length ? jobs.map(function(t){
+    return '<div class="job"><div class="jf"><div class="muted small">' + RATES[t.vehicle].emoji + ' ' + RATES[t.vehicle].name + ' · ~' + t.km + ' km · ~' + t.min + ' min · ' + PAY_LABEL[t.payment] + '</div><div class="jfare">' + euro(t.fare) + '</div></div>' +
+      '<div class="jrow"><span class="dot" style="background:var(--success)"></span><div class="rv">' + t.pickup + '</div></div>' +
+      '<div class="jrow"><span class="dot" style="background:var(--primary)"></span><div class="rv">' + t.dropoff + '</div></div>' +
+      '<div class="jactions"><button class="btn btn-secondary" onclick="declineJob(\'' + t.id + '\')">Decline</button><button class="btn btn-primary" onclick="acceptJob(\'' + t.id + '\')">Accept job</button></div></div>';
+  }).join('') : '<div class="empty" style="margin-top:16px"><div style="font-size:40px">🕓</div><div style="font-weight:700;margin-top:6px">No jobs right now</div><div class="small">Rider bookings appear here. Tap “Add test job” to try it.</div></div>';
+}
+
+function addTestJob(){
+  reloadTrips();
+  var a = PLACES[Math.floor(Math.random() * PLACES.length)];
+  var b = PLACES[Math.floor(Math.random() * PLACES.length)];
+  var guard = 0; while (b.label === a.label && guard++ < 20) { b = PLACES[Math.floor(Math.random() * PLACES.length)]; }
+  var f = estimate(a, b, 'standard');
+  trips.unshift({ id: 'T' + Date.now().toString(36).toUpperCase(), at: Date.now(),
+    pickup: a.label, dropoff: b.label, plat: a.lat, plng: a.lng, dlat: b.lat, dlng: b.lng,
+    km: f.km, min: f.min, vehicle: 'standard', payment: 'card', fare: f.total, status: 'requested', driver: null, source: 'test' });
+  saveTrips();
+  renderDriverHome();
+}
+
+function acceptJob(id){
+  reloadTrips();
+  var t = trips.find(function(x){ return x.id === id; }); if (!t) return;
+  t.status = 'accepted'; t.driver = driver.name; saveTrips();
+  openTrip(id);
+}
+function declineJob(id){
+  reloadTrips();
+  var t = trips.find(function(x){ return x.id === id; }); if (t){ t.status = 'declined'; saveTrips(); }
+  renderDriverHome();
+}
+function openTrip(id){ driver.activeId = id; go('driver-trip'); }
+
+function renderDriverTrip(){
+  reloadTrips();
+  var t = trips.find(function(x){ return x.id === driver.activeId; });
+  if (!t){ go('driver-home'); return; }
+
+  document.getElementById('dtrip-info').innerHTML =
+    '<div class="jf"><div style="font-weight:800">' + RATES[t.vehicle].name + '</div><div class="jfare">' + euro(t.fare) + '</div></div>' +
+    '<div class="jrow"><span class="dot" style="background:var(--success)"></span><div class="rv">' + t.pickup + '</div></div>' +
+    '<div class="jrow"><span class="dot" style="background:var(--primary)"></span><div class="rv">' + t.dropoff + '</div></div>' +
+    '<div class="muted small" style="margin-top:8px">~' + t.km + ' km · ~' + t.min + ' min · ' + PAY_LABEL[t.payment] + '</div>';
+
+  var idx = STEP_FLOW.indexOf(t.status);
+  document.getElementById('dtrip-steps').innerHTML = STEP_FLOW.map(function(s, i){
+    var isDone = i <= idx;
+    return '<div class="step ' + (isDone ? 'done' : '') + '"><span class="sc">' + (isDone ? '✓' : (i+1)) + '</span><span>' + STEP_LABEL[s] + '</span></div>';
+  }).join('');
+
+  document.getElementById('dtrip-action').textContent = t.status === 'completed' ? 'Back to jobs' : (ACTION_LABEL[t.status] || 'Continue');
+  drawDriverMap(t);
+}
+
+function advanceTrip(){
+  reloadTrips();
+  var t = trips.find(function(x){ return x.id === driver.activeId; });
+  if (!t){ go('driver-home'); return; }
+  if (t.status === 'completed'){ go('driver-home'); return; }
+  var idx = STEP_FLOW.indexOf(t.status);
+  t.status = STEP_FLOW[Math.min(idx + 1, STEP_FLOW.length - 1)];
+  saveTrips();
+  if (t.status === 'completed'){
+    renderDriverTrip();
+    setTimeout(function(){ go('driver-home'); toast('Trip completed — ' + euro(t.fare) + ' earned'); }, 800);
+  } else {
+    renderDriverTrip();
+  }
+}
+
+// Driver-side map (second Leaflet instance)
+var dmap = null, dpick = null, ddrop = null, dline = null;
+function ensureDMap(){
+  if (dmap || typeof L === 'undefined') return;
+  dmap = L.map('dmap', { zoomControl: false, attributionControl: false }).setView(CARNDONAGH, 10);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(dmap);
+}
+function drawDriverMap(t){
+  ensureDMap(); if (!dmap) return;
+  setTimeout(function(){
+    dmap.invalidateSize();
+    if (dpick){ dmap.removeLayer(dpick); dpick = null; }
+    if (ddrop){ dmap.removeLayer(ddrop); ddrop = null; }
+    if (dline){ dmap.removeLayer(dline); dline = null; }
+    if (t.plat != null){
+      dpick = L.marker([t.plat, t.plng], { icon: markerIcon('#34D399') }).addTo(dmap);
+      ddrop = L.marker([t.dlat, t.dlng], { icon: markerIcon('#FFC531') }).addTo(dmap);
+      dline = L.polyline([[t.plat, t.plng], [t.dlat, t.dlng]], { color: '#FFC531', weight: 4, opacity: .9, dashArray: '2 10' }).addTo(dmap);
+      dmap.fitBounds(dline.getBounds(), { padding: [35, 35] });
+    }
+  }, 60);
 }
 </script>
 </body>
