@@ -774,14 +774,18 @@ function renderPlaces(){
   }
 }
 function geocode(query, seq, localHtml){
-  // Free OpenStreetMap geocoding — biased to Inishowen/Donegal, then IE + UK.
-  var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8' +
-    '&countrycodes=ie,gb&viewbox=-7.95,55.5,-6.85,54.85&bounded=0&q=' + encodeURIComponent(query);
-  fetch(url, { headers: { 'Accept': 'application/json' } })
+  // Photon (komoot) — free, keyless OSM geocoder for autocomplete. Biased to
+  // Inishowen via lat/lon so local pubs/hotels/streets rank first.
+  var url = 'https://photon.komoot.io/api/?limit=8&lang=en&lat=55.25&lon=-7.27&q=' + encodeURIComponent(query);
+  fetch(url)
     .then(function(r){ return r.json(); })
-    .then(function(rows){
+    .then(function(data){
       if (seq !== geoSeq) return; // a newer keystroke superseded this
-      geoResults = (rows || []).map(function(r){ return { label: shortenLabel(r), lat: parseFloat(r.lat), lng: parseFloat(r.lon) }; });
+      var feats = (data && data.features) || [];
+      geoResults = feats.map(function(f){
+        var c = (f.geometry && f.geometry.coordinates) || [0, 0];
+        return { label: labelFromPhoton(f), lat: c[1], lng: c[0] };
+      }).filter(function(g){ return g.lat && g.lng; });
       var online = geoResults.map(function(g, i){
         return '<div class="row" style="border-bottom:1px solid var(--border)" onclick="chooseOnline(' + i + ')">' +
           '<span style="font-size:16px">📍</span><div class="rv">' + esc(g.label) + '</div></div>';
@@ -798,11 +802,16 @@ function geocode(query, seq, localHtml){
       document.getElementById('place-list').innerHTML = localHtml + '<p class="empty">Couldn’t search just now — check your connection and try again.</p>';
     });
 }
-function shortenLabel(r){
-  var parts = (r.display_name || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-  var name = (r.name && r.name.trim().length) ? r.name.trim() : (parts[0] || 'Location');
-  var rest = parts.filter(function(p){ return p !== name; }).slice(0, 2).join(', ');
-  return rest ? name + ', ' + rest : name;
+function labelFromPhoton(f){
+  var p = f.properties || {};
+  var main = p.name || [p.housenumber, p.street].filter(Boolean).join(' ') || p.city || p.county || 'Location';
+  var parts = [];
+  if (p.street && p.name && p.street !== main) parts.push(p.street);
+  if (p.city && p.city !== main) parts.push(p.city);
+  else if (!p.city && p.county && p.county !== main) parts.push(p.county);
+  if (p.postcode) parts.push(p.postcode);
+  var area = parts.slice(0, 2).join(', ');
+  return area ? main + ', ' + area : main;
 }
 function setPlace(p){
   if (state.field === 'dropoff'){ state.dropoff = p; document.getElementById('dropoff-label').textContent = p.label; }
