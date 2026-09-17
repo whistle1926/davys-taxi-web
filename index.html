@@ -206,44 +206,88 @@
     <div class="tagline">Book a taxi across Inishowen &amp; Donegal in seconds.</div>
 
     <!-- New user: name + country code + mobile -->
-    <div class="wform" id="auth-new" style="margin-top:30px; text-align:left;">
+    <div class="wform" id="auth-new" style="margin-top:26px; text-align:left;">
       <label class="label">Your name</label>
       <input id="in-name" class="input" placeholder="e.g. Aoife Doherty" autocomplete="off" oninput="checkNew()" />
       <label class="label" style="margin-top:16px;">Mobile number</label>
       <div class="phone-row">
-        <select id="in-cc" class="cc-select">
-          <option value="+353">🇮🇪 +353</option>
-          <option value="+44">🇬🇧 +44</option>
-        </select>
+        <select id="in-cc" class="cc-select"><option value="+353">🇮🇪 +353</option><option value="+44">🇬🇧 +44</option></select>
         <input id="in-phone" class="input" inputmode="tel" placeholder="87 123 4567" autocomplete="off" oninput="checkNew()" style="flex:1" />
       </div>
-      <button id="btn-continue" class="btn btn-primary" style="margin-top:24px;" disabled onclick="onNewContinue()">Continue</button>
-      <button class="btn btn-secondary" style="margin-top:8px;" onclick="go('driver-login')">🧑‍✈️ I'm a driver</button>
+      <button id="btn-continue" class="btn btn-primary" style="margin-top:22px;" disabled onclick="onNewContinue()">Create account</button>
+      <button class="link-btn" style="display:block;margin:14px auto 0" onclick="showAuth('login')">Already have an account? Log in</button>
+      <button class="btn btn-secondary" style="margin-top:12px;" onclick="go('driver-login')">🧑‍✈️ I'm a driver</button>
     </div>
 
-    <!-- Returning user: welcome back + PIN login -->
-    <div class="wform" id="auth-return" style="display:none; margin-top:30px; text-align:left;">
+    <!-- Cross-device log in: mobile + PIN -->
+    <div class="wform" id="auth-login" style="display:none; margin-top:26px; text-align:left;">
+      <div class="welcome-back">Log in</div>
+      <label class="label" style="margin-top:16px;">Mobile number</label>
+      <div class="phone-row">
+        <select id="li-cc" class="cc-select"><option value="+353">🇮🇪 +353</option><option value="+44">🇬🇧 +44</option></select>
+        <input id="li-phone" class="input" inputmode="tel" placeholder="87 123 4567" autocomplete="off" style="flex:1" />
+      </div>
+      <label class="label" style="margin-top:14px;">PIN</label>
+      <input id="li-pin" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" />
+      <div id="login-err" class="err-text"></div>
+      <button class="btn btn-primary" onclick="onLogin()">Log in</button>
+      <button class="link-btn" style="display:block;margin:12px auto 0" onclick="showAuth('forgot');resetForgot()">Forgot your PIN?</button>
+      <button class="link-btn" style="display:block;margin:10px auto 0" onclick="showAuth('new')">New here? Create an account</button>
+    </div>
+
+    <!-- Same-device welcome back -->
+    <div class="wform" id="auth-return" style="display:none; margin-top:26px; text-align:left;">
       <div class="welcome-back">Welcome back, <span id="ret-name">there</span> 👋</div>
       <div id="ret-pin-wrap">
         <label class="label" style="margin-top:18px;">Enter your PIN</label>
-        <input id="in-loginpin" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkLogin()" />
+        <input id="in-loginpin" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkReturn()" />
       </div>
-      <div id="login-err" class="err-text"></div>
-      <button id="btn-login" class="btn btn-primary" style="margin-top:6px;" onclick="onLogin()">Log in</button>
+      <div id="ret-err" class="err-text"></div>
+      <button id="btn-retlogin" class="btn btn-primary" style="margin-top:6px;" onclick="onReturnLogin()">Log in</button>
+      <button class="link-btn" style="display:block;margin:10px auto 0" onclick="showAuth('forgot');resetForgot()">Forgot your PIN?</button>
       <button class="btn btn-secondary" style="margin-top:8px;" onclick="startOver()">Not you? Start over</button>
     </div>
 
-    <!-- Create a login PIN (optional) -->
-    <div class="wform" id="auth-pin" style="display:none; margin-top:30px; text-align:left;">
-      <div class="welcome-back">Save your account</div>
-      <p class="muted small" style="margin:6px 0 16px">Create a 4-digit PIN and you can log back in instantly next time.</p>
+    <!-- Create PIN + recovery email -->
+    <div class="wform" id="auth-pin" style="display:none; margin-top:26px; text-align:left;">
+      <div class="welcome-back">Set up your account</div>
+      <p class="muted small" style="margin:6px 0 14px">Create a 4-digit PIN — you'll use your mobile + PIN to log in on any device.</p>
       <label class="label">Create PIN</label>
       <input id="in-pin1" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkPin()" />
       <label class="label" style="margin-top:12px;">Confirm PIN</label>
       <input id="in-pin2" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="••••" oninput="checkPin()" />
+      <label class="label" style="margin-top:14px;">Recovery email <span class="muted" style="font-weight:500">(optional — to reset your PIN)</span></label>
+      <input id="in-email" class="input" type="email" placeholder="you@example.com" autocomplete="off" />
       <div id="pin-err" class="err-text"></div>
-      <button id="btn-savepin" class="btn btn-primary" style="margin-top:6px;" disabled onclick="onSavePin()">Save PIN &amp; continue</button>
-      <button class="btn btn-secondary" style="margin-top:8px;" onclick="onSkipPin()">Skip for now</button>
+      <button id="btn-savepin" class="btn btn-primary" style="margin-top:4px;" disabled onclick="onSavePin()">Create account</button>
+    </div>
+
+    <!-- Forgot PIN -->
+    <div class="wform" id="auth-forgot" style="display:none; margin-top:26px; text-align:left;">
+      <div class="welcome-back">Reset your PIN</div>
+      <div id="f-mobile">
+        <p class="muted small" style="margin:6px 0 12px">Enter your mobile — we'll email a code to the address on your account.</p>
+        <div class="phone-row">
+          <select id="fg-cc" class="cc-select"><option value="+353">🇮🇪 +353</option><option value="+44">🇬🇧 +44</option></select>
+          <input id="fg-phone" class="input" inputmode="tel" placeholder="87 123 4567" style="flex:1" />
+        </div>
+        <div id="forgot-err" class="err-text"></div>
+        <button class="btn btn-primary" onclick="onForgotSend()">Send reset code</button>
+      </div>
+      <div id="f-code" style="display:none">
+        <p class="muted small" style="margin:6px 0 12px">Enter the 6-digit code emailed to <span id="fg-emailmask" style="color:var(--text)"></span>.</p>
+        <input id="fg-code" class="input" inputmode="numeric" maxlength="6" placeholder="123456" style="text-align:center;letter-spacing:8px;font-size:22px" />
+        <div id="fcode-err" class="err-text"></div>
+        <button class="btn btn-primary" onclick="onForgotVerify()">Verify code</button>
+      </div>
+      <div id="f-newpin" style="display:none">
+        <p class="muted small" style="margin:6px 0 12px">Choose a new 4-digit PIN.</p>
+        <input id="fg-pin1" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="New PIN" oninput="checkForgotPin()" />
+        <input id="fg-pin2" class="input pin-input" inputmode="numeric" maxlength="4" placeholder="Confirm" style="margin-top:8px" oninput="checkForgotPin()" />
+        <div id="fnew-err" class="err-text"></div>
+        <button id="fg-save" class="btn btn-primary" disabled onclick="onForgotReset()">Save new PIN</button>
+      </div>
+      <button class="link-btn" style="display:block;margin:14px auto 0" onclick="showAuth('login')">← Back to log in</button>
     </div>
   </section>
 
@@ -367,6 +411,7 @@
           <div id="reset-err" class="err-text"></div>
           <button id="btn-reset-save" class="btn btn-primary" style="height:44px" disabled onclick="onResetPin()">Save new PIN</button>
         </div>
+        <div id="acct-email-box" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px"></div>
       </div>
       <div class="section" style="margin:4px 0 12px">Your trips</div>
       <div id="trips-list"></div>
@@ -1211,13 +1256,15 @@ function toast(msg) {
 }
 
 // ---------- Accounts & sign-in ----------
-// Stored on the device for now; moves to Supabase when the backend is connected.
+// Accounts live in Supabase (customers table) so you can log in on any device
+// with mobile + PIN; localStorage keeps this device signed in for convenience.
 var account = null;
 try { account = JSON.parse(localStorage.getItem('davys.account') || 'null'); } catch (e) { account = null; }
 function saveAccountStore(){ try { localStorage.setItem('davys.account', JSON.stringify(account)); } catch (e) {} }
+function fullPhone(cc, ph){ return (cc || '') + String(ph || '').replace(/\s+/g, ''); }
 
 function showAuth(view){
-  ['new', 'return', 'pin'].forEach(function(v){
+  ['new', 'login', 'return', 'pin', 'forgot'].forEach(function(v){
     var el = document.getElementById('auth-' + v);
     if (el) el.style.display = (v === view ? 'block' : 'none');
   });
@@ -1226,75 +1273,155 @@ function initAuth(){
   if (account && account.name){
     document.getElementById('ret-name').textContent = account.name.split(' ')[0];
     var wrap = document.getElementById('ret-pin-wrap');
-    document.getElementById('login-err').textContent = '';
-    if (account.pin){
-      wrap.style.display = 'block';
-      document.getElementById('in-loginpin').value = '';
-      document.getElementById('btn-login').disabled = true;
-    } else {
-      wrap.style.display = 'none';
-      document.getElementById('btn-login').disabled = false;
-    }
+    document.getElementById('ret-err').textContent = '';
+    if (account.pin){ wrap.style.display = 'block'; document.getElementById('in-loginpin').value = ''; document.getElementById('btn-retlogin').disabled = true; }
+    else { wrap.style.display = 'none'; document.getElementById('btn-retlogin').disabled = false; }
     showAuth('return');
-  } else {
-    showAuth('new');
-  }
+  } else { showAuth('new'); }
 }
 function enterApp(){
   document.getElementById('hello').textContent = 'Hi, ' + (account.name || '').split(' ')[0] + ' 👋';
   state.name = account.name;
   state.phone = (account.countryCode || '') + ' ' + (account.phone || '');
-  upsertCustomer();
+  saveCustomerAccount();
   go('home');
 }
 
+// ---- Cross-device account storage (Supabase customers) ----
+async function findCustomer(full){
+  if (!BACKEND) return null;
+  try { var r = await sb.from('customers').select('*').eq('phone', full).maybeSingle(); return r.data || null; } catch (e) { return null; }
+}
+async function saveCustomerAccount(){
+  if (!BACKEND || !account) return;
+  try {
+    await sb.from('customers').upsert({
+      phone: fullPhone(account.countryCode, account.phone), name: account.name,
+      country_code: account.countryCode || '', pin: account.pin || null,
+      email: account.email || null, email_verified: !!account.email_verified,
+    });
+  } catch (e) {}
+}
+// ---- Email codes (via Supabase auth email OTP) ----
+async function sendEmailCode(email){ var r = await sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } }); if (r.error) throw r.error; }
+async function verifyEmailCode(email, code){ var r = await sb.auth.verifyOtp({ email: email, token: code, type: 'email' }); if (r.error) throw r.error; try { await sb.auth.signOut(); } catch (e) {} }
+function maskEmail(e){ var p = String(e || '').split('@'); if (p.length < 2) return e; var n = p[0]; return (n.length <= 2 ? n[0] + '***' : n.slice(0, 2) + '***') + '@' + p[1]; }
+
+// ---- New user ----
 function checkNew(){
-  var ok = document.getElementById('in-name').value.trim().length > 1 && document.getElementById('in-phone').value.trim().length >= 6;
+  var ok = document.getElementById('in-name').value.trim().length > 1 && document.getElementById('in-phone').value.trim().replace(/\s+/g,'').length >= 6;
   document.getElementById('btn-continue').disabled = !ok;
 }
 function onNewContinue(){
   account = {
     name: document.getElementById('in-name').value.trim(),
     countryCode: document.getElementById('in-cc').value,
-    phone: document.getElementById('in-phone').value.trim(),
-    pin: null, createdAt: Date.now(),
+    phone: document.getElementById('in-phone').value.trim().replace(/\s+/g, ''),
+    pin: null, email: null, email_verified: false, createdAt: Date.now(),
   };
-  saveAccountStore();     // save the account immediately (low friction)
-  showAuth('pin');        // then offer a login PIN
+  saveAccountStore();
+  showAuth('pin');
 }
-
 function checkPin(){
   var a = document.getElementById('in-pin1').value.trim(), b = document.getElementById('in-pin2').value.trim();
   document.getElementById('btn-savepin').disabled = !(a.length === 4 && b.length === 4);
 }
-function onSavePin(){
+async function onSavePin(){
   var a = document.getElementById('in-pin1').value.trim(), b = document.getElementById('in-pin2').value.trim();
   if (a !== b){ document.getElementById('pin-err').textContent = 'PINs don’t match — try again.'; return; }
   document.getElementById('pin-err').textContent = '';
-  account.pin = a; saveAccountStore();
+  account.pin = a;
+  var em = (document.getElementById('in-email').value || '').trim();
+  account.email = em || null; account.email_verified = false;
+  saveAccountStore();
+  await saveCustomerAccount();
   enterApp();
 }
-function onSkipPin(){ enterApp(); }
 
-function checkLogin(){ document.getElementById('btn-login').disabled = document.getElementById('in-loginpin').value.trim().length < 4; }
-function onLogin(){
-  if (account.pin){
-    if (document.getElementById('in-loginpin').value.trim() !== String(account.pin)){
-      document.getElementById('login-err').textContent = 'Incorrect PIN — try again.'; return;
-    }
+// ---- Same-device return ----
+function checkReturn(){ document.getElementById('btn-retlogin').disabled = document.getElementById('in-loginpin').value.trim().length < 4; }
+function onReturnLogin(){
+  if (account.pin && document.getElementById('in-loginpin').value.trim() !== String(account.pin)){
+    document.getElementById('ret-err').textContent = 'Incorrect PIN — try again.'; return;
   }
-  document.getElementById('login-err').textContent = '';
+  document.getElementById('ret-err').textContent = '';
   enterApp();
 }
 function startOver(){
   account = null;
   try { localStorage.removeItem('davys.account'); } catch (e) {}
-  document.getElementById('in-name').value = '';
-  document.getElementById('in-phone').value = '';
-  checkNew();
-  showAuth('new');
+  document.getElementById('in-name').value = ''; document.getElementById('in-phone').value = '';
+  checkNew(); showAuth('new');
 }
 
+// ---- Cross-device log in (mobile + PIN) ----
+async function onLogin(){
+  var cc = document.getElementById('li-cc').value, ph = document.getElementById('li-phone').value.trim();
+  var pin = document.getElementById('li-pin').value.trim();
+  var err = document.getElementById('login-err');
+  if (!ph || pin.length < 4){ err.textContent = 'Enter your mobile and 4-digit PIN.'; return; }
+  err.textContent = 'Checking…';
+  var c = await findCustomer(fullPhone(cc, ph));
+  if (!c){ err.textContent = 'No account found for that mobile.'; return; }
+  if (!c.pin){ err.textContent = 'No PIN set on this account — reset it below.'; return; }
+  if (String(c.pin) !== pin){ err.textContent = 'Incorrect PIN — try again.'; return; }
+  account = { name: c.name, countryCode: cc, phone: ph.replace(/\s+/g,''), pin: c.pin, email: c.email, email_verified: c.email_verified, createdAt: Date.now() };
+  saveAccountStore(); err.textContent = ''; enterApp();
+}
+
+// ---- Forgot PIN (email code → new PIN) ----
+var forgotCtx = { email: null, full: null, cc: null, ph: null };
+function resetForgot(){
+  forgotCtx = { email: null, full: null, cc: null, ph: null };
+  document.getElementById('f-mobile').style.display = 'block';
+  document.getElementById('f-code').style.display = 'none';
+  document.getElementById('f-newpin').style.display = 'none';
+  ['forgot-err', 'fcode-err', 'fnew-err'].forEach(function(id){ var e = document.getElementById(id); if (e) e.textContent = ''; });
+  ['fg-phone', 'fg-code', 'fg-pin1', 'fg-pin2'].forEach(function(id){ var e = document.getElementById(id); if (e) e.value = ''; });
+  document.getElementById('fg-save').disabled = true;
+}
+async function onForgotSend(){
+  var cc = document.getElementById('fg-cc').value, ph = document.getElementById('fg-phone').value.trim();
+  var err = document.getElementById('forgot-err');
+  if (!ph){ err.textContent = 'Enter your mobile number.'; return; }
+  err.textContent = 'Looking up your account…';
+  var c = await findCustomer(fullPhone(cc, ph));
+  if (!c){ err.textContent = 'No account found for that mobile.'; return; }
+  if (!c.email || !c.email_verified){ err.textContent = 'No verified email on this account. Add one in your profile first, or contact Davy.'; return; }
+  forgotCtx = { email: c.email, full: fullPhone(cc, ph), cc: cc, ph: ph.replace(/\s+/g,'') };
+  err.textContent = 'Sending code…';
+  try { await sendEmailCode(c.email); } catch (e) { err.textContent = 'Could not send the code — try again shortly.'; return; }
+  document.getElementById('fg-emailmask').textContent = maskEmail(c.email);
+  err.textContent = '';
+  document.getElementById('f-mobile').style.display = 'none';
+  document.getElementById('f-code').style.display = 'block';
+}
+async function onForgotVerify(){
+  var code = document.getElementById('fg-code').value.trim();
+  var err = document.getElementById('fcode-err');
+  if (code.length < 6){ err.textContent = 'Enter the 6-digit code.'; return; }
+  err.textContent = 'Verifying…';
+  try { await verifyEmailCode(forgotCtx.email, code); } catch (e) { err.textContent = 'That code did not work — try again.'; return; }
+  err.textContent = '';
+  document.getElementById('f-code').style.display = 'none';
+  document.getElementById('f-newpin').style.display = 'block';
+}
+function checkForgotPin(){
+  var a = document.getElementById('fg-pin1').value.trim(), b = document.getElementById('fg-pin2').value.trim();
+  document.getElementById('fg-save').disabled = !(a.length === 4 && b.length === 4);
+}
+async function onForgotReset(){
+  var a = document.getElementById('fg-pin1').value.trim(), b = document.getElementById('fg-pin2').value.trim();
+  if (a !== b){ document.getElementById('fnew-err').textContent = 'PINs don’t match.'; return; }
+  try { await sb.from('customers').update({ pin: a }).eq('phone', forgotCtx.full); } catch (e) {}
+  var c = await findCustomer(forgotCtx.full);
+  account = { name: (c && c.name) || '', countryCode: forgotCtx.cc, phone: forgotCtx.ph, pin: a, email: (c && c.email) || null, email_verified: (c && c.email_verified) || false, createdAt: Date.now() };
+  saveAccountStore();
+  toast('PIN reset — you’re logged in');
+  enterApp();
+}
+
+// ---- Profile ----
 function riderSignOut(){ go('welcome'); initAuth(); }
 function renderAccount(){
   if (!account) return;
@@ -1303,23 +1430,61 @@ function renderAccount(){
   document.getElementById('acct-initials').textContent =
     (account.name || 'A').split(' ').map(function(s){ return s[0]; }).slice(0, 2).join('').toUpperCase();
   document.getElementById('reset-pin-box').style.display = 'none';
+  renderEmailBox();
 }
-function toggleResetPin(){
-  var b = document.getElementById('reset-pin-box');
-  b.style.display = b.style.display === 'none' ? 'block' : 'none';
-}
+function toggleResetPin(){ var b = document.getElementById('reset-pin-box'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; }
 function checkResetPin(){
   var a = document.getElementById('reset-pin1').value.trim(), b = document.getElementById('reset-pin2').value.trim();
   document.getElementById('btn-reset-save').disabled = !(a.length === 4 && b.length === 4);
 }
-function onResetPin(){
+async function onResetPin(){
   var a = document.getElementById('reset-pin1').value.trim(), b = document.getElementById('reset-pin2').value.trim();
   if (a !== b){ document.getElementById('reset-err').textContent = 'PINs don’t match.'; return; }
-  account.pin = a; saveAccountStore();
+  account.pin = a; saveAccountStore(); await saveCustomerAccount();
   document.getElementById('reset-err').textContent = '';
   document.getElementById('reset-pin1').value = ''; document.getElementById('reset-pin2').value = '';
   document.getElementById('reset-pin-box').style.display = 'none';
   toast('PIN updated');
+}
+
+// ---- Profile: recovery email + verification ----
+var evState = 'send';
+function renderEmailBox(){
+  var box = document.getElementById('acct-email-box'); if (!box) return;
+  evState = 'send';
+  if (account.email && account.email_verified){
+    box.innerHTML = '<div class="muted small">Recovery email</div>'
+      + '<div style="font-weight:600;margin-top:3px">' + esc(account.email) + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(52,211,153,.15);color:var(--success);font-weight:700">✓ Verified</span></div>'
+      + '<button class="link-btn" style="margin-top:8px" onclick="emailChange()">Change email</button>';
+  } else {
+    box.innerHTML = '<div class="muted small" style="margin-bottom:6px">Recovery email' + (account.email ? ' <span style="color:var(--danger)">(not verified)</span>' : '') + '</div>'
+      + '<input id="ev-email" class="input" type="email" placeholder="you@example.com" value="' + esc(account.email || '') + '">'
+      + '<div id="ev-code-wrap" style="display:none;margin-top:8px"><input id="ev-code" class="input" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="text-align:center;letter-spacing:6px"></div>'
+      + '<div id="ev-err" class="err-text"></div>'
+      + '<button id="ev-btn" class="btn btn-secondary" style="height:44px;margin-top:4px" onclick="emailStep()">Verify email</button>';
+  }
+}
+function emailChange(){ account.email = null; account.email_verified = false; saveAccountStore(); saveCustomerAccount(); renderEmailBox(); }
+async function emailStep(){
+  var err = document.getElementById('ev-err');
+  if (evState === 'send'){
+    var email = (document.getElementById('ev-email').value || '').trim();
+    if (!email || email.indexOf('@') < 1){ err.textContent = 'Enter a valid email.'; return; }
+    err.textContent = 'Sending code…';
+    try { await sendEmailCode(email); } catch (e) { err.textContent = 'Could not send — try again shortly.'; return; }
+    account._pendingEmail = email;
+    document.getElementById('ev-code-wrap').style.display = 'block';
+    document.getElementById('ev-btn').textContent = 'Confirm code';
+    evState = 'verify'; err.textContent = 'Code sent — check your inbox (and spam).';
+  } else {
+    var code = (document.getElementById('ev-code').value || '').trim();
+    if (code.length < 6){ err.textContent = 'Enter the 6-digit code.'; return; }
+    err.textContent = 'Verifying…';
+    try { await verifyEmailCode(account._pendingEmail, code); } catch (e) { err.textContent = 'That code did not work.'; return; }
+    account.email = account._pendingEmail; account.email_verified = true; delete account._pendingEmail;
+    saveAccountStore(); await saveCustomerAccount();
+    toast('Email verified'); renderEmailBox();
+  }
 }
 
 initAuth();
