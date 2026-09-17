@@ -39,6 +39,7 @@
     padding: 0;
   }
 
+  /* Mobile-first: on a phone the app fills the whole screen (the 98% case). */
   #app {
     position: relative;
     width: 100%;
@@ -48,9 +49,20 @@
     display: flex;
     flex-direction: column;
   }
-  /* Keep readable content widths while filling the whole screen. */
-  .screen > .scroll, .screen > .footer, .sheet, .wform, .head, .pad { max-width: 620px; margin-left: auto; margin-right: auto; width: 100%; }
   .map { width: 100%; }
+  /* On a desktop/tablet, present it as a phone so the preview looks like the
+     real mobile app instead of a stretched-out web page. */
+  @media (min-width: 600px) {
+    body { padding: 20px; }
+    #app {
+      width: 400px;
+      height: 860px;
+      max-height: calc(100vh - 40px);
+      border-radius: 40px;
+      border: 1px solid #1c2635;
+      box-shadow: 0 30px 90px rgba(0,0,0,.65);
+    }
+  }
   .btn-secondary { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
   .link-btn { background: none; border: none; color: var(--primary); font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; }
 
@@ -709,7 +721,7 @@ function markerIcon(color){
 }
 function ensureMap(){
   if (map || typeof L === 'undefined') return;
-  map = L.map('leaflet', { zoomControl: false, attributionControl: true }).setView(CARNDONAGH, 10);
+  map = L.map('leaflet', { zoomControl: false, attributionControl: true }).setView(CARNDONAGH, 12);
   // Esri dark-grey canvas — keyless, matches the dark UI.
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 16,
@@ -737,7 +749,7 @@ function redrawRoute(){
   } else if (state.pickup){
     map.setView([state.pickup.lat, state.pickup.lng], 12);
   } else {
-    map.setView(CARNDONAGH, 10);
+    map.setView(CARNDONAGH, 12);
   }
 }
 
